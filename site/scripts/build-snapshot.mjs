@@ -13,8 +13,8 @@
 import { build } from 'esbuild';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
-import { dirname, resolve } from 'node:path';
+import { readFile, writeFile, mkdir, readdir } from 'node:fs/promises';
+import { dirname, resolve, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import process from 'node:process';
 
@@ -101,9 +101,15 @@ const rawSize  = JSON.stringify(rawTasks).length;
 const trimSize = JSON.stringify(tasks).length;
 console.log(`[snapshot]   trimmed tasks ${(rawSize / 1024).toFixed(1)} → ${(trimSize / 1024).toFixed(1)} KB`);
 
+const blog = {
+  zh: await loadBlog(resolve(SITE, 'src/content/blog/zh')),
+  en: await loadBlog(resolve(SITE, 'src/content/blog/en')),
+};
+console.log(`[snapshot]   loaded ${blog.zh.length} zh + ${blog.en.length} en blog post(s)`);
+
 const labels = {
-  zh: { ...zh, 'tab.leaderboard': 'Leaderboard', 'tab.slice': 'Slice', 'tab.tasks': 'Tasks', 'snapshot.badge': '快照' },
-  en: { ...en, 'tab.leaderboard': 'Leaderboard', 'tab.slice': 'Slice', 'tab.tasks': 'Tasks', 'snapshot.badge': 'Snapshot' },
+  zh: { ...zh, 'tab.leaderboard': 'Leaderboard', 'tab.slice': 'Slice', 'tab.tasks': 'Tasks', 'tab.blog': 'Blog', 'snapshot.badge': '快照' },
+  en: { ...en, 'tab.leaderboard': 'Leaderboard', 'tab.slice': 'Slice', 'tab.tasks': 'Tasks', 'tab.blog': 'Blog', 'snapshot.badge': 'Snapshot' },
 };
 
 const data = {
@@ -111,6 +117,7 @@ const data = {
   stats,
   leaderboard,
   tasks,
+  blog,
   labels,
 };
 const dataJson = JSON.stringify(data);
@@ -130,4 +137,53 @@ console.log(`[snapshot]   total ${sizeKB} KB`);
 
 async function readJson(p) {
   return JSON.parse(await readFile(p, 'utf8'));
+}
+
+async function loadBlog(dir) {
+  let entries = [];
+  try {
+    entries = await readdir(dir);
+  } catch {
+    return [];
+  }
+  const posts = [];
+  for (const f of entries) {
+    if (!f.endsWith('.md')) continue;
+    const raw = await readFile(resolve(dir, f), 'utf8');
+    const { frontmatter, body } = parseFrontmatter(raw);
+    posts.push({
+      slug: basename(f, '.md'),
+      title: String(frontmatter.title ?? f),
+      description: String(frontmatter.description ?? ''),
+      pubDate: String(frontmatter.pubDate ?? ''),
+      author: String(frontmatter.author ?? ''),
+      tags: Array.isArray(frontmatter.tags) ? frontmatter.tags : [],
+      body,
+    });
+  }
+  posts.sort((a, b) => (b.pubDate || '').localeCompare(a.pubDate || ''));
+  return posts;
+}
+
+// Tiny YAML-ish frontmatter parser (only what we need: scalars + simple [a, b] lists).
+function parseFrontmatter(src) {
+  const m = /^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/.exec(src);
+  if (!m) return { frontmatter: {}, body: src };
+  const fm = {};
+  for (const rawLine of m[1].split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith('#')) continue;
+    const idx = line.indexOf(':');
+    if (idx < 0) continue;
+    const key = line.slice(0, idx).trim();
+    let val = line.slice(idx + 1).trim();
+    if (val.startsWith('"') && val.endsWith('"'))      val = val.slice(1, -1);
+    else if (val.startsWith("'") && val.endsWith("'")) val = val.slice(1, -1);
+    if (val.startsWith('[') && val.endsWith(']')) {
+      fm[key] = val.slice(1, -1).split(',').map((s) => s.trim()).filter(Boolean);
+    } else {
+      fm[key] = val;
+    }
+  }
+  return { frontmatter: fm, body: m[2] };
 }

@@ -1,17 +1,30 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import HarnessMatrix from '@/components/react/HarnessMatrix';
 import LeaderboardTable from '@/components/react/LeaderboardTable';
 import SliceAnalyzer from '@/components/react/SliceAnalyzer';
 import TaskExplorer from '@/components/react/TaskExplorer';
+import { renderMarkdownLite } from '@/lib/markdown-lite';
 import type { LeaderboardData, StatsData, TaskRecord } from '@/lib/types';
 
 type Locale = 'zh' | 'en';
+type TabId = 'leaderboard' | 'slice' | 'tasks' | 'blog';
+
+interface BlogPost {
+  slug: string;
+  title: string;
+  description: string;
+  pubDate: string;
+  author: string;
+  tags: string[];
+  body: string;
+}
 
 interface SnapshotData {
   generatedAt: string;
   stats: StatsData;
   leaderboard: LeaderboardData;
   tasks: TaskRecord[];
+  blog: Record<Locale, BlogPost[]>;
   labels: Record<Locale, Record<string, unknown>>;
 }
 
@@ -21,10 +34,11 @@ declare global {
   }
 }
 
-const TABS: Array<{ id: 'leaderboard' | 'slice' | 'tasks'; key: string }> = [
+const TABS: Array<{ id: TabId; key: string }> = [
   { id: 'leaderboard', key: 'tab.leaderboard' },
   { id: 'slice',       key: 'tab.slice' },
   { id: 'tasks',       key: 'tab.tasks' },
+  { id: 'blog',        key: 'tab.blog' },
 ];
 
 function getLabel(L: Record<string, unknown>, key: string, fallback = ''): string {
@@ -35,7 +49,7 @@ function getLabel(L: Record<string, unknown>, key: string, fallback = ''): strin
 export default function App() {
   const D = window.__PAWBENCH__;
   const [locale, setLocale] = useState<Locale>('zh');
-  const [tab, setTab] = useState<'leaderboard' | 'slice' | 'tasks'>('leaderboard');
+  const [tab, setTab] = useState<TabId>('leaderboard');
   const [dark, setDark] = useState(false);
 
   useEffect(() => {
@@ -44,10 +58,10 @@ export default function App() {
 
   // Sync tab + locale to URL hash so links can be shared.
   useEffect(() => {
-    const m = /^#\/(zh|en)\/(leaderboard|slice|tasks)/.exec(window.location.hash);
+    const m = /^#\/(zh|en)\/(leaderboard|slice|tasks|blog)/.exec(window.location.hash);
     if (m) {
       setLocale(m[1] as Locale);
-      setTab(m[2] as 'leaderboard' | 'slice' | 'tasks');
+      setTab(m[2] as TabId);
     }
   }, []);
   useEffect(() => {
@@ -176,6 +190,12 @@ export default function App() {
             <TaskExplorer tasks={D.tasks} baseUrl="" labels={tasksLabels} />
           </Section>
         )}
+
+        {tab === 'blog' && (
+          <Section title={t('blog.title', 'Blog')} subtitle={t('blog.subtitle')}>
+            <BlogList posts={D.blog[locale] ?? []} emptyText={t('blog.empty', 'No posts yet.')} />
+          </Section>
+        )}
       </main>
 
       <Footer
@@ -197,9 +217,9 @@ function Topbar({
   title: string;
   snapshotLabel: string;
   generatedAt: string;
-  tab: 'leaderboard' | 'slice' | 'tasks';
-  onTab: (t: 'leaderboard' | 'slice' | 'tasks') => void;
-  tabLabels: Array<{ id: 'leaderboard' | 'slice' | 'tasks'; label: string }>;
+  tab: TabId;
+  onTab: (t: TabId) => void;
+  tabLabels: Array<{ id: TabId; label: string }>;
 }) {
   return (
     <header className="sticky top-0 z-30 backdrop-blur bg-white/80 dark:bg-slate-950/70 border-b border-slate-200 dark:border-slate-800">
@@ -332,6 +352,79 @@ function Section({ title, subtitle, children }: { title: string; subtitle?: stri
       {subtitle && <p className="mt-1 text-sm text-slate-500">{subtitle}</p>}
       <div className="mt-4">{children}</div>
     </section>
+  );
+}
+
+function BlogList({ posts, emptyText }: { posts: BlogPost[]; emptyText: string }) {
+  const [openSlug, setOpenSlug] = useState<string | null>(null);
+  const open = useMemo(() => posts.find((p) => p.slug === openSlug) ?? null, [posts, openSlug]);
+
+  if (!posts.length) {
+    return <div className="text-sm text-slate-500 py-8 text-center">{emptyText}</div>;
+  }
+
+  if (open) {
+    return (
+      <article className="prose prose-slate dark:prose-invert max-w-none">
+        <button
+          type="button"
+          onClick={() => setOpenSlug(null)}
+          className="not-prose mb-4 text-xs text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 underline-offset-2 hover:underline"
+        >
+          ← Back
+        </button>
+        <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white !mb-2">{open.title}</h1>
+        <div className="not-prose flex flex-wrap items-center gap-2 text-xs text-slate-500 mb-6">
+          {open.pubDate && <time>{open.pubDate}</time>}
+          {open.author && <><span>·</span><span>{open.author}</span></>}
+          {open.tags.length > 0 && (
+            <>
+              <span>·</span>
+              {open.tags.map((tag) => (
+                <span key={tag} className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                  {tag}
+                </span>
+              ))}
+            </>
+          )}
+        </div>
+        <div
+          className="md-body text-slate-700 dark:text-slate-200 leading-relaxed"
+          dangerouslySetInnerHTML={{ __html: renderMarkdownLite(open.body) }}
+        />
+      </article>
+    );
+  }
+
+  return (
+    <ul className="divide-y divide-slate-100 dark:divide-slate-800 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+      {posts.map((p) => (
+        <li key={p.slug}>
+          <button
+            type="button"
+            onClick={() => setOpenSlug(p.slug)}
+            className="w-full text-left px-5 py-4 hover:bg-slate-50 dark:hover:bg-slate-900/40 transition flex flex-col gap-1"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div className="font-semibold text-slate-900 dark:text-white">{p.title}</div>
+              {p.pubDate && <time className="text-xs text-slate-500 shrink-0">{p.pubDate}</time>}
+            </div>
+            {p.description && (
+              <div className="text-sm text-slate-600 dark:text-slate-400 line-clamp-2">{p.description}</div>
+            )}
+            {p.tags.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-1">
+                {p.tags.map((tag) => (
+                  <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
+          </button>
+        </li>
+      ))}
+    </ul>
   );
 }
 
