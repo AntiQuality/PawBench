@@ -8,6 +8,7 @@ Writes:
     site/src/data/tasks.json                (all task metadata + body sections)
     site/src/data/stats.json                (aggregated counters used by /index Hero)
 """
+
 from __future__ import annotations
 
 import json

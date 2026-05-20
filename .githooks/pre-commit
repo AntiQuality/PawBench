@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Chain: org AK leak scanner → project pre-commit checks.
+set -euo pipefail
+
+AKSCANNER="${AKSCANNER:-$HOME/.aliyunAKScanHook/bin/akscanner}"
+if [[ -x "$AKSCANNER" ]]; then
+  # akscanner detects hook type from argv[0] (same as the org symlink hooks).
+  (exec -a pre-commit "$AKSCANNER" "$@") || exit $?
+fi
+
+exec pre-commit run --hook-stage pre-commit "$@"

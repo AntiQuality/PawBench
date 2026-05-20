@@ -1,0 +1,4 @@
+# Dev tooling for pawbench (pre-commit hooks + site data build scripts)
+pre-commit>=4.0
+ruff>=0.9
+pyyaml>=6.0

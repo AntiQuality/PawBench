@@ -1,0 +1,18 @@
+[project]
+name = "pawbench"
+version = "0.1.0"
+description = "Open benchmark for evaluating AI agents on real-world tasks"
+readme = "README.md"
+requires-python = ">=3.11"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+src = ["site/scripts"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["E501"]
+
+[tool.ruff.format]
+quote-style = "double"

@@ -1,0 +1,40 @@
+# Install:  pip install -r requirements-dev.txt && pre-commit install
+# Run all:   pre-commit run --all-files
+
+default_language_version:
+  python: python3
+
+exclude: |
+  (?x)^(
+    site/dist/|
+    site/node_modules/|
+    site/src/data/|
+    site/\.snapshot-tmp/|
+    pawbench-snapshot\.html|
+    site/pawbench-site\.zip
+  )
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+        # Task markdown under data/ is curated benchmark content — don't auto-fix.
+        exclude: ^data/
+      - id: end-of-file-fixer
+        exclude: ^data/
+      - id: check-yaml
+      - id: check-json
+      - id: check-merge-conflict
+      - id: detect-private-key
+      - id: check-added-large-files
+        args: [--maxkb=512]
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.9.6
+    hooks:
+      - id: ruff
+        files: ^site/scripts/.*\.py$
+      - id: ruff-format
+        files: ^site/scripts/.*\.py$

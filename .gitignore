@@ -5,3 +5,7 @@ pawbench-snapshot.html
 
 # zipped static-site bundle for sharing
 site/pawbench-site.zip
+
+# repo git hooks: only commit the pre-commit chain script; symlinks are local
+.githooks/*
+!.githooks/pre-commit

@@ -25,3 +25,22 @@ pawbench/
 
 See [`site/README.md`](site/README.md) for site development and deployment, and
 [`data/pawbench-v1.0/tasks/`](data/pawbench-v1.0/tasks/) for the task format.
+
+## Pre-commit
+
+Git hooks lint Python build scripts and run basic repo hygiene checks before each
+commit. This repo chains them **after** the org AK-leak scanner (global
+`core.hooksPath` is overridden locally via `.githooks/`).
+
+```bash
+pip install -r requirements-dev.txt   # or: pip install pre-commit ruff pyyaml
+./scripts/setup-pre-commit.sh         # one-time: .githooks/ + pre-commit install
+pre-commit run --all-files            # optional: check the whole tree now
+```
+
+Hooks cover:
+
+- trailing whitespace / EOF (excluding curated task files under `data/`)
+- YAML & JSON validity
+- private-key detection & large-file guard
+- **ruff** format + lint on `site/scripts/*.py`
