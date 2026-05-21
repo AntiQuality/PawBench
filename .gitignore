@@ -9,3 +9,7 @@ site/pawbench-site.zip
 # repo git hooks: only commit the pre-commit chain script; symlinks are local
 .githooks/*
 !.githooks/pre-commit
+
+# raw evaluation runs (large, not source-of-truth — aggregated outputs land
+# in submissions/ via site/scripts/aggregate_results.py)
+result/

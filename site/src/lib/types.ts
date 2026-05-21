@@ -31,6 +31,8 @@ export interface LeaderboardRow {
   automated: number;
   judge: number;
   tasks: number;
+  tasks_errored?: number;
+  run?: string | null;
   by_source?: Record<string, number>;
   by_capability?: Record<string, number>;
   by_complexity?: Record<string, number>;
@@ -51,10 +53,16 @@ export interface LeaderboardMatrix {
   rows: Array<Record<string, string | number | null>>;
 }
 
+export interface HarnessMeta {
+  display: string;
+  version: string;
+}
+
 export interface LeaderboardData {
   is_mock: boolean;
   rows: LeaderboardRow[];
   matrix: LeaderboardMatrix;
+  harnesses?: Record<string, HarnessMeta>;
   generated_at: string;
 }
 

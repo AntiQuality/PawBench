@@ -1,19 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { LeaderboardData, StatsData } from '@/lib/types';
-import { cn } from '@/lib/utils';
+import { cn, harnessLabel, harnessVersion } from '@/lib/utils';
 
 type Dim =
   | 'complexity'
   | 'capability'
   | 'modality'
-  | 'channel'
   | 'environment'
-  | 'grading'
-  | 'source'
   | 'scenario_top'
-  | 'scenario'
-  | 'category'
-  | 'subcategory';
+  | 'source';
 
 interface Props {
   data: LeaderboardData;
@@ -23,7 +18,6 @@ interface Props {
     dims: Partial<
       Record<
         | Dim
-        | `group:${'task-shape' | 'capability' | 'scoring' | 'taxonomy'}`
         | 'bucket.title'
         | 'bucket.help'
         | 'pivot.summary'
@@ -39,34 +33,29 @@ interface Props {
 interface DimSpec {
   statsField: keyof StatsData;
   rowField:
-    | 'by_complexity' | 'by_capability' | 'by_modality' | 'by_channel'
-    | 'by_environment' | 'by_grading' | 'by_source' | 'by_scenario'
-    | 'by_scenario_top' | 'by_category' | 'by_subcategory'
+    | 'by_complexity' | 'by_capability' | 'by_modality'
+    | 'by_environment' | 'by_source' | 'by_scenario_top'
     | null;
   topN?: number;
-  group: 'task-shape' | 'capability' | 'scoring' | 'taxonomy';
 }
 
-const DIM_SPEC: Record<Dim, DimSpec> = {
-  complexity:    { statsField: 'complexity',   rowField: 'by_complexity',   topN: 10, group: 'task-shape' },
-  modality:      { statsField: 'modality',     rowField: 'by_modality',     topN: 4,  group: 'task-shape' },
-  channel:       { statsField: 'channels',     rowField: 'by_channel',      topN: 6,  group: 'task-shape' },
-  environment:   { statsField: 'environment',  rowField: 'by_environment',  topN: 4,  group: 'task-shape' },
-  capability:    { statsField: 'capabilities', rowField: 'by_capability',   topN: 8,  group: 'capability' },
-  grading:       { statsField: 'grading_type', rowField: 'by_grading',      topN: 4,  group: 'scoring' },
-  source:        { statsField: 'sources',      rowField: 'by_source',       topN: 8,  group: 'scoring' },
-  scenario_top:  { statsField: 'scenario_top', rowField: 'by_scenario_top', topN: 8,  group: 'taxonomy' },
-  scenario:      { statsField: 'scenarios',    rowField: 'by_scenario',     topN: 10, group: 'taxonomy' },
-  category:      { statsField: 'category',     rowField: 'by_category',     topN: 10, group: 'taxonomy' },
-  subcategory:   { statsField: 'subcategory',  rowField: 'by_subcategory',  topN: 10, group: 'taxonomy' },
-};
-
-const GROUPS: Array<{ id: DimSpec['group']; dims: Dim[] }> = [
-  { id: 'task-shape', dims: ['complexity', 'modality', 'channel', 'environment'] },
-  { id: 'capability', dims: ['capability'] },
-  { id: 'scoring',    dims: ['grading', 'source'] },
-  { id: 'taxonomy',   dims: ['scenario_top', 'scenario', 'category', 'subcategory'] },
+// Order = display order in the picker, mirroring the fields under `task.labels`
+// in the markdown frontmatter (plus the implicit `source`).
+const DIM_ORDER: Dim[] = [
+  'complexity', 'modality', 'environment',
+  'capability',
+  'scenario_top',
+  'source',
 ];
+
+const DIM_SPEC: Record<Dim, DimSpec> = {
+  complexity:    { statsField: 'complexity',   rowField: 'by_complexity',   topN: 10 },
+  modality:      { statsField: 'modality',     rowField: 'by_modality',     topN: 4  },
+  environment:   { statsField: 'environment',  rowField: 'by_environment',  topN: 4  },
+  capability:    { statsField: 'capabilities', rowField: 'by_capability',   topN: 8  },
+  scenario_top:  { statsField: 'scenario_top', rowField: 'by_scenario_top', topN: 8  },
+  source:        { statsField: 'sources',      rowField: 'by_source',       topN: 8  },
+};
 
 function colorFor(v: number | null | undefined): string {
   if (v == null) return 'bg-slate-50 dark:bg-slate-900 text-slate-300 dark:text-slate-600';
@@ -108,51 +97,50 @@ export default function SliceAnalyzer({ data, stats, labels }: Props) {
 
   return (
     <div className="space-y-5">
-      {/* Step 1 — pick a dimension */}
-      <Card step="1" title={labels.dim}>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-4">
-          {GROUPS.map((g) => (
-            <div key={g.id}>
-              <div className="text-[10px] uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1.5">
-                {l(labels, `group:${g.id}`, g.id)}
-              </div>
-              <div className="flex flex-wrap gap-1">
-                {g.dims.map((d) => {
-                  const total = Object.keys((stats[DIM_SPEC[d].statsField] || {}) as Record<string, number>).length;
-                  const active = dim === d;
-                  return (
-                    <button
-                      key={d}
-                      type="button"
-                      onClick={() => setDim(d)}
-                      className={cn(
-                        'px-2.5 py-1 rounded-md text-xs border transition flex items-center gap-1.5',
-                        active
-                          ? 'bg-brand-700 border-brand-700 text-white'
-                          : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-                      )}
-                    >
-                      <span>{labels.dims[d] ?? d}</span>
-                      <span className={cn(
-                        'text-[10px] px-1 rounded',
-                        active ? 'bg-white/20 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
-                      )}>{total}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </div>
-      </Card>
-
-      {/* Step 2 — pick one specific value */}
+      {/* Combined picker — dimension + specific value live in one card */}
       <Card
-        step="2"
-        title={l(labels, 'bucket.title', 'Pick a value')}
-        hint={l(labels, 'bucket.help', 'Pick one bucket → see model × harness scores on that subset of tasks')}
+        step="1"
+        title={labels.dim}
+        hint={l(labels, 'bucket.help', 'Pick a dimension, then a value → see model × harness scores on that subset of tasks')}
       >
-        <div className="flex flex-wrap gap-1.5">
+        {/* Dimension row */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-[10px] uppercase tracking-wider text-slate-400 dark:text-slate-500 mr-1">
+            {labels.dim}
+          </span>
+          {DIM_ORDER.map((d) => {
+            const total = Object.keys((stats[DIM_SPEC[d].statsField] || {}) as Record<string, number>).length;
+            const active = dim === d;
+            return (
+              <button
+                key={d}
+                type="button"
+                onClick={() => setDim(d)}
+                className={cn(
+                  'px-2.5 py-1 rounded-md text-xs border transition inline-flex items-center gap-1.5',
+                  active
+                    ? 'bg-brand-700 border-brand-700 text-white'
+                    : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                )}
+              >
+                <span>{labels.dims[d] ?? d}</span>
+                <span className={cn(
+                  'text-[10px] px-1 rounded',
+                  active ? 'bg-white/20 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
+                )}>{total}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Divider */}
+        <div className="my-3 border-t border-dashed border-slate-200 dark:border-slate-800" />
+
+        {/* Bucket row */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-[10px] uppercase tracking-wider text-slate-400 dark:text-slate-500 mr-1">
+            {l(labels, 'bucket.title', 'Value')}
+          </span>
           {visibleBuckets.map((b) => {
             const active = bucket === b;
             return (
@@ -313,9 +301,26 @@ function PivotMatrix({
             <thead>
               <tr className="bg-slate-50 dark:bg-slate-900/50 text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wide">
                 <th className="text-left px-4 py-2 sticky left-0 bg-slate-50 dark:bg-slate-900/50">Model \ Harness</th>
-                {harnesses.map((h) => (
-                  <th key={h} className="px-3 py-2 text-center font-medium">{h}</th>
-                ))}
+                {harnesses.map((h) => {
+                  const display = harnessLabel(h, data.harnesses);
+                  const version = harnessVersion(h, data.harnesses);
+                  return (
+                    <th
+                      key={h}
+                      className="px-3 py-2 text-center font-medium normal-case align-bottom"
+                      title={version ? `${display} v${version}` : display}
+                    >
+                      <div className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                        {display}
+                      </div>
+                      {version && (
+                        <div className="text-[10px] font-mono font-normal text-slate-400 dark:text-slate-500 normal-case tracking-normal">
+                          v{version}
+                        </div>
+                      )}
+                    </th>
+                  );
+                })}
                 <th className="px-3 py-2 text-right font-medium">{l(labels, 'pivot.bestCol', 'best')}</th>
               </tr>
             </thead>

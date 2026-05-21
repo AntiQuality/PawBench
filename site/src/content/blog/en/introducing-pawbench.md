@@ -19,7 +19,7 @@ Running agent evaluations over the past year, we kept hitting the same friction:
    schema and scoring code. Comparing a model across them means standing up several harnesses.
 2. **Opaque grading.** Many benchmarks publish only final scores, not the grading functions.
    For a benchmark that claims to measure "real capability", we believe **grading code must be public**.
-3. **Harness dimension is ignored.** A single model's score under OpenClaw vs. copaw vs. Hermes can
+3. **Harness dimension is ignored.** A single model's score under OpenClaw vs. QwenPaw vs. Hermes can
    vary more than the difference between two competing models — yet leaderboards rarely surface this.
 
 pawbench answers all three with a unified task format, transparent grading, and an explicit

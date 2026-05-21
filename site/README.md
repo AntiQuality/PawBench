@@ -30,6 +30,7 @@ site/
 │   └── styles/global.css
 ├── scripts/
 │   ├── build_tasks.py               data/pawbench-v1.0/tasks/*.md → tasks.json + stats.json
+│   ├── aggregate_results.py         result/<run>/.../metrics.json → submissions/*.json
 │   └── build_leaderboard.py         submissions/*.json → leaderboard.json (mock if empty)
 └── public/                          static assets copied as-is
 ```
@@ -67,17 +68,34 @@ npm run preview
 
 ## Submissions / leaderboard data
 
-Drop run results under `submissions/*.json` at the repo root (next to `data/`).
-Each JSON should match this shape:
+Two paths to land scores on the leaderboard:
+
+### 1. Auto-aggregate from raw runs (`result/`)
+
+Place harness output under `result/<run>/<model>/<harness>/<task-id>/output/metrics.json`
+(repo root, gitignored) and run `npm run build:data`. The aggregator
+(`scripts/aggregate_results.py`) joins each metrics file with the task
+metadata in `tasks.json` and emits one rolled-up JSON per
+`(run, model, harness)` into `submissions/`. `build_leaderboard.py` then
+dedupes by `(model, harness)` keeping the freshest `updated`.
+
+Re-running the same run is idempotent. To deprecate an old run, just delete
+its `submissions/<run>__*.json` files.
+
+### 2. Hand-write a submission JSON
+
+Drop a JSON under `submissions/*.json` matching this shape:
 
 ```json
 {
+  "run": "pawbench-rerun-20260519",
   "model": "gpt-5.4",
   "harness": "openclaw",
   "overall":   0.612,
   "automated": 0.71,
   "judge":     0.55,
   "tasks":     150,
+  "tasks_errored": 0,
   "by_source":     { "claweval": 0.65, "wildclawbench": 0.58 },
   "by_capability": { "Tool_Use": 0.72, "Planning": 0.61 },
   "by_complexity": { "L1": 0.81, "L2": 0.66, "L3": 0.58 },
@@ -85,16 +103,15 @@ Each JSON should match this shape:
 }
 ```
 
-`build_leaderboard.py` aggregates these into `src/data/leaderboard.json`. While
-`submissions/` is empty, the script falls back to the inline mock rows so the
-UI still renders.
+While `submissions/` is empty, `build_leaderboard.py` falls back to inline
+mock rows so the UI still renders.
 
 ## Deployment
 
 Automated via `.github/workflows/deploy-site.yml`:
 
-1. `push` to `main` touching `site/**`, `data/**`, or the workflow itself
-2. CI runs the two Python build scripts → installs npm deps → `npm run build`
+1. `push` to `main` touching `site/**`, `data/**`, `submissions/**`, or the workflow itself
+2. CI runs `build_tasks.py` → `aggregate_results.py` → `build_leaderboard.py` → `npm run build`
 3. The `dist/` folder is uploaded as a Pages artifact and deployed
 
 **One-time GitHub setup**:

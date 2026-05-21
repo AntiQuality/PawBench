@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { LeaderboardData, LeaderboardRow } from '@/lib/types';
-import { cn } from '@/lib/utils';
+import { cn, harnessLabel, harnessVersion } from '@/lib/utils';
 
 type SortKey = 'overall' | 'automated' | 'judge';
 
@@ -21,6 +21,7 @@ interface Props {
 export default function LeaderboardTable({ data, labels }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>('overall');
   const [filterHarness, setFilterHarness] = useState<string | 'all'>('all');
+  const harnessesMeta = data.harnesses;
 
   const harnesses = useMemo(
     () => Array.from(new Set(data.rows.map((r) => r.harness))).sort(),
@@ -49,21 +50,36 @@ export default function LeaderboardTable({ data, labels }: Props) {
         >
           All harnesses
         </button>
-        {harnesses.map((h) => (
-          <button
-            key={h}
-            type="button"
-            onClick={() => setFilterHarness(h)}
-            className={cn(
-              'px-2.5 py-1 rounded-md text-xs border transition',
-              filterHarness === h
-                ? 'bg-brand-700 border-brand-700 text-white'
-                : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-            )}
-          >
-            {h}
-          </button>
-        ))}
+        {harnesses.map((h) => {
+          const display = harnessLabel(h, harnessesMeta);
+          const version = harnessVersion(h, harnessesMeta);
+          return (
+            <button
+              key={h}
+              type="button"
+              onClick={() => setFilterHarness(h)}
+              title={version ? `${display} v${version}` : display}
+              className={cn(
+                'px-2.5 py-1 rounded-md text-xs border transition inline-flex items-baseline gap-1',
+                filterHarness === h
+                  ? 'bg-brand-700 border-brand-700 text-white'
+                  : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+              )}
+            >
+              <span>{display}</span>
+              {version && (
+                <span
+                  className={cn(
+                    'text-[10px] font-mono',
+                    filterHarness === h ? 'text-white/70' : 'text-slate-400 dark:text-slate-500'
+                  )}
+                >
+                  v{version}
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
 
       <div className="rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
@@ -87,7 +103,16 @@ export default function LeaderboardTable({ data, labels }: Props) {
                   <td className="px-4 py-2 text-slate-500 tabular-nums">{idx + 1}</td>
                   <td className="px-3 py-2 font-medium text-slate-800 dark:text-slate-200">{r.model}</td>
                   <td className="px-3 py-2">
-                    <span className="badge bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">{r.harness}</span>
+                    <span
+                      className="badge bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
+                      title={
+                        harnessVersion(r.harness, harnessesMeta)
+                          ? `${harnessLabel(r.harness, harnessesMeta)} v${harnessVersion(r.harness, harnessesMeta)}`
+                          : harnessLabel(r.harness, harnessesMeta)
+                      }
+                    >
+                      {harnessLabel(r.harness, harnessesMeta)}
+                    </span>
                   </td>
                   <td className="px-3 py-2 text-right tabular-nums font-semibold text-brand-700 dark:text-brand-300">
                     {(r.overall * 100).toFixed(1)}

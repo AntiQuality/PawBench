@@ -19,7 +19,7 @@ tags: [release, design]
    想横向比较一个模型必须把每个 harness 都跑一遍。
 2. **评分不透明** —— 不少 benchmark 只暴露最终分数，而不暴露 grading 函数。
    我们认为对一个声称要"评估真实能力"的 benchmark 来说，**grading code 必须公开**。
-3. **Harness 维度被忽视** —— 同一个模型在 OpenClaw / copaw / Hermes 等不同 harness 下的差异
+3. **Harness 维度被忽视** —— 同一个模型在 OpenClaw / QwenPaw / Hermes 等不同 harness 下的差异
    往往超过模型本身的差异，但很少有 leaderboard 显式暴露这一点。
 
 pawbench 的目标是用一个统一的任务格式 + 透明的评分 + Model × Harness 双维度榜单回应这三点。

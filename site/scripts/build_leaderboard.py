@@ -1,27 +1,31 @@
 #!/usr/bin/env python3
 """Build the leaderboard JSON consumed by the website.
 
-This is a placeholder generator. Until real submissions land in
-``submissions/`` (or ``results/``), it emits a small mock leaderboard so the
-UI can render without crashing.
+The script reads every ``submissions/*.json`` entry (one per
+``(run, model, harness)``, produced by ``aggregate_results.py`` for raw runs
+under ``result/`` or hand-written by submitters), dedupes by
+``(model, harness)`` keeping the freshest ``updated`` date, and writes
+``site/src/data/leaderboard.json``.
 
-Drop real submissions under ``submissions/<slug>.json`` with the schema:
+When ``submissions/`` is empty it falls back to a small inline mock so the UI
+still renders.
+
+Submission schema::
 
     {
+      "run":     "pawbench-rerun-20260519",   # optional, for traceability
       "model":   "gpt-5.4",
       "harness": "openclaw",
       "overall": 0.612,
       "automated": 0.71,
       "judge": 0.55,
       "tasks": 150,
+      "tasks_errored": 0,
       "by_source":     { "claweval": 0.65, ... },
       "by_capability": { "Tool_Use": 0.72, ... },
       "by_complexity": { "L1": 0.81, "L2": 0.66, "L3": 0.58 },
       "updated": "2026-05-18"
     }
-
-This script will then aggregate them by (model, harness) and produce
-``leaderboard.json``.
 """
 
 from __future__ import annotations
@@ -38,6 +42,14 @@ SUBMISSIONS_DIR = REPO_ROOT / "submissions"
 OUT_DIR = SITE_ROOT / "src" / "data"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
+# Harness display name + current version, surfaced in the UI under each column
+# header. Edit when a new release lands.
+HARNESS_META: dict[str, dict[str, str]] = {
+    "qwenpaw": {"display": "QwenPaw", "version": "1.1.3"},
+    "openclaw": {"display": "OpenClaw", "version": "2026.4.24"},
+    "hermes": {"display": "Hermes", "version": "2026.4.23"},
+}
+
 _BASE_ROWS: list[dict[str, Any]] = [
     {
         "model": "claude-opus-4.6",
@@ -48,7 +60,7 @@ _BASE_ROWS: list[dict[str, Any]] = [
     },
     {
         "model": "claude-opus-4.6",
-        "harness": "copaw",
+        "harness": "qwenpaw",
         "overall": 0.681,
         "automated": 0.74,
         "judge": 0.62,
@@ -68,7 +80,7 @@ _BASE_ROWS: list[dict[str, Any]] = [
         "judge": 0.55,
     },
     {"model": "glm-5.1", "harness": "openclaw", "overall": 0.623, "automated": 0.69, "judge": 0.56},
-    {"model": "gpt-5.4", "harness": "copaw", "overall": 0.612, "automated": 0.69, "judge": 0.54},
+    {"model": "gpt-5.4", "harness": "qwenpaw", "overall": 0.612, "automated": 0.69, "judge": 0.54},
     {"model": "gpt-5.4", "harness": "openclaw", "overall": 0.603, "automated": 0.68, "judge": 0.53},
     {
         "model": "deepseek-v4-pro",
@@ -86,7 +98,7 @@ _BASE_ROWS: list[dict[str, Any]] = [
     },
     {
         "model": "qwen3.6-plus",
-        "harness": "copaw",
+        "harness": "qwenpaw",
         "overall": 0.572,
         "automated": 0.65,
         "judge": 0.50,
@@ -223,31 +235,43 @@ def load_submissions() -> list[dict[str, Any]]:
 
 
 def normalize(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Normalize, dedupe by (model, harness), and sort.
+
+    When two rows share the same ``(model, harness)`` we keep the one with the
+    later ``updated`` date — typical case is a re-run replacing an older run.
+    """
     today = date.today().isoformat()
-    out: list[dict[str, Any]] = []
+    by_key: dict[tuple[str, str], dict[str, Any]] = {}
     for r in rows:
         if "model" not in r or "harness" not in r:
             continue
-        out.append(
-            {
-                "model": r["model"],
-                "harness": r["harness"],
-                "overall": float(r.get("overall", 0.0)),
-                "automated": float(r.get("automated", 0.0)),
-                "judge": float(r.get("judge", 0.0)),
-                "tasks": int(r.get("tasks", 0)),
-                "by_source": r.get("by_source", {}),
-                "by_capability": r.get("by_capability", {}),
-                "by_complexity": r.get("by_complexity", {}),
-                "by_modality": r.get("by_modality", {}),
-                "by_channel": r.get("by_channel", {}),
-                "by_scenario": r.get("by_scenario", {}),
-                "by_scenario_top": r.get("by_scenario_top", {}),
-                "by_grading": r.get("by_grading", {}),
-                "by_environment": r.get("by_environment", {}),
-                "updated": r.get("updated", today),
-            }
-        )
+        key = (r["model"], r["harness"])
+        normalized = {
+            "model": r["model"],
+            "harness": r["harness"],
+            "overall": float(r.get("overall", 0.0)),
+            "automated": float(r.get("automated", 0.0)),
+            "judge": float(r.get("judge", 0.0)),
+            "tasks": int(r.get("tasks", 0)),
+            "tasks_errored": int(r.get("tasks_errored", 0)),
+            "run": r.get("run"),
+            "by_source": r.get("by_source", {}),
+            "by_capability": r.get("by_capability", {}),
+            "by_complexity": r.get("by_complexity", {}),
+            "by_modality": r.get("by_modality", {}),
+            "by_channel": r.get("by_channel", {}),
+            "by_scenario": r.get("by_scenario", {}),
+            "by_scenario_top": r.get("by_scenario_top", {}),
+            "by_grading": r.get("by_grading", {}),
+            "by_environment": r.get("by_environment", {}),
+            "by_category": r.get("by_category", {}),
+            "by_subcategory": r.get("by_subcategory", {}),
+            "updated": r.get("updated", today),
+        }
+        prev = by_key.get(key)
+        if prev is None or normalized["updated"] >= prev["updated"]:
+            by_key[key] = normalized
+    out = list(by_key.values())
     out.sort(key=lambda x: x["overall"], reverse=True)
     return out
 
@@ -272,6 +296,19 @@ def build_matrix(rows: list[dict[str, Any]]) -> dict[str, Any]:
     return {"models": [r["model"] for r in matrix], "harnesses": harnesses, "rows": matrix}
 
 
+def collect_harness_meta(rows: list[dict[str, Any]]) -> dict[str, dict[str, str]]:
+    """Pick out display+version for the harnesses that actually appear."""
+    seen = {r["harness"] for r in rows}
+    out: dict[str, dict[str, str]] = {}
+    for h in seen:
+        meta = HARNESS_META.get(h)
+        out[h] = {
+            "display": (meta or {}).get("display", h),
+            "version": (meta or {}).get("version", ""),
+        }
+    return out
+
+
 def main() -> int:
     submissions = load_submissions()
     is_mock = not submissions
@@ -281,6 +318,7 @@ def main() -> int:
         "is_mock": is_mock,
         "rows": rows,
         "matrix": build_matrix(rows),
+        "harnesses": collect_harness_meta(rows),
         "generated_at": date.today().isoformat(),
     }
 

@@ -16,12 +16,35 @@ pawbench/
 │   └── pawbench-v1.0/
 │       ├── tasks/                   150 task markdown files
 │       └── assets/                  workspace files mounted into agent containers
+├── result/                          raw evaluation runs (gitignored, large)
+│   └── <run-name>/<model>/<harness>/T*/output/metrics.json
+├── submissions/                     rolled-up scores (one JSON per run × model × harness)
 ├── site/                            GitHub Pages site (Astro + React + Tailwind)
 │   └── README.md                    site dev/deploy guide
-├── submissions/                     (optional) per-(model, harness) result JSONs
 └── .github/workflows/
     └── deploy-site.yml              auto-deploy site on push to main
 ```
+
+## Updating the leaderboard with new evaluation results
+
+Drop a new run under `result/<run-name>/<model>/<harness>/<task-id>/output/metrics.json`
+(typical file produced by the harness runners) and rebuild:
+
+```bash
+cd site
+npm run build:data
+```
+
+That runs three steps in order:
+
+1. `build_tasks.py` — `data/pawbench-v1.0/tasks/*.md` → `src/data/{tasks,stats}.json`
+2. `aggregate_results.py` — `result/<run>/...` → `submissions/<run>__<model>__<harness>.json`
+3. `build_leaderboard.py` — `submissions/*.json` → `src/data/leaderboard.json`
+   (dedupes by `(model, harness)`, keeping the freshest `updated` date)
+
+Display names for vendor-prefixed model directories live in
+`MODEL_ALIAS` near the top of `site/scripts/aggregate_results.py`; edit there
+when a new run uses a name like `openai.gpt-6` and you want it shown as `gpt-6`.
 
 See [`site/README.md`](site/README.md) for site development and deployment, and
 [`data/pawbench-v1.0/tasks/`](data/pawbench-v1.0/tasks/) for the task format.

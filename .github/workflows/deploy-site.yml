@@ -6,6 +6,7 @@ on:
     paths:
       - 'site/**'
       - 'data/**'
+      - 'submissions/**'
       - '.github/workflows/deploy-site.yml'
   workflow_dispatch:
 
@@ -32,8 +33,13 @@ jobs:
         run: pip install pyyaml
 
       - name: Build task & leaderboard data
+        # build_tasks.py first (so aggregate_results.py can join with tasks.json),
+        # then aggregate_results.py to refresh submissions/ from any tracked
+        # raw runs under result/ (typically empty in CI), then build_leaderboard.py
+        # to roll the submissions/ tree into leaderboard.json.
         run: |
           python site/scripts/build_tasks.py
+          python site/scripts/aggregate_results.py
           python site/scripts/build_leaderboard.py
 
       - uses: actions/setup-node@v4

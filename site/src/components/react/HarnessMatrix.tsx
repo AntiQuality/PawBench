@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { LeaderboardData } from '@/lib/types';
-import { cn } from '@/lib/utils';
+import { cn, harnessLabel, harnessVersion } from '@/lib/utils';
 
 interface Props {
   data: LeaderboardData;
@@ -29,7 +29,7 @@ function colorFor(v: number | null): string {
 }
 
 export default function HarnessMatrix({ data, labels }: Props) {
-  const { matrix, is_mock } = data;
+  const { matrix, is_mock, harnesses: harnessesMeta } = data;
   const { harnesses, rows } = matrix;
   const [hoverModel, setHoverModel] = useState<string | null>(null);
 
@@ -80,9 +80,26 @@ export default function HarnessMatrix({ data, labels }: Props) {
           <thead>
             <tr className="bg-slate-50 dark:bg-slate-900/50 text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
               <th className="text-left px-4 py-2 font-medium">Model</th>
-              {harnesses.map((h) => (
-                <th key={h} className="px-3 py-2 font-medium text-center">{h}</th>
-              ))}
+              {harnesses.map((h) => {
+                const display = harnessLabel(h, harnessesMeta);
+                const version = harnessVersion(h, harnessesMeta);
+                return (
+                  <th
+                    key={h}
+                    className="px-3 py-2 font-medium text-center normal-case align-bottom"
+                    title={version ? `${display} v${version}` : display}
+                  >
+                    <div className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                      {display}
+                    </div>
+                    {version && (
+                      <div className="text-[10px] font-mono font-normal text-slate-400 dark:text-slate-500 normal-case tracking-normal">
+                        v{version}
+                      </div>
+                    )}
+                  </th>
+                );
+              })}
               <th className="px-3 py-2 font-medium text-center border-l border-slate-200 dark:border-slate-800 bg-slate-100/70 dark:bg-slate-900">
                 {labels.avg}
               </th>
