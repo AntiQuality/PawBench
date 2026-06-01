@@ -395,6 +395,13 @@ class PawBenchBackend(BenchmarkBackend):
                 pass
 
         transcript = agent.extract_transcript(local_workspace, stdout_output)
+
+        # Collect agent log text so anomaly detection can spot 429/rate-limit
+        # events that the agent retried internally (and thus never surfaced as
+        # stopReason=error in the transcript).  We read all known log file
+        # paths from the workspace before the workspace is cleaned up.
+        log_text = _collect_log_text(local_workspace)
+
         execution_result: dict[str, Any] = {
             "agent_id": agent.name,
             "task_id": task.task_id,
@@ -407,6 +414,7 @@ class PawBenchBackend(BenchmarkBackend):
             "execution_time": time.time() - t0,
             "stdout": stdout_output,
             "stderr": "",
+            "log_text": log_text,
         }
 
         task_labels = {
@@ -645,3 +653,44 @@ class _StubGrade:
         self.grading_type = "error"
         self.breakdown: dict[str, float] = {}
         self.notes = notes
+
+
+def _collect_log_text(workspace: Path | None, max_bytes: int = 512_000) -> str:
+    """Read known agent log files from the collected workspace and return them
+    concatenated as a single string.
+
+    This text is injected into ``execution_result["log_text"]`` so that
+    anomaly detection rules (specifically ``_check_api_rate_limit``) can
+    detect 429 / quota errors that the agent's *internal* retry mechanism
+    silently masked at the transcript level.
+
+    Log file candidates (in priority order):
+    * ``logs/qwenpaw_server.log``   — copaw / qwenpaw agent
+    * ``openclaw_gateway.log``      — openclaw agent
+    * ``logs/main.log``             — hermes agent
+
+    We cap the total size to *max_bytes* to avoid sending megabytes to the
+    anomaly scanner.  Tail bytes are preferred since rate-limit events tend
+    to cluster toward the end of a run.
+    """
+    if workspace is None or not workspace.is_dir():
+        return ""
+    candidates = [
+        workspace / "logs" / "qwenpaw_server.log",
+        workspace / "openclaw_gateway.log",
+        workspace / "logs" / "main.log",
+    ]
+    parts: list[str] = []
+    remaining = max_bytes
+    for path in candidates:
+        if not path.exists() or remaining <= 0:
+            continue
+        try:
+            raw = path.read_bytes()
+            # Take the tail so we see recent errors first.
+            tail = raw[-remaining:].decode("utf-8", errors="ignore")
+            parts.append(tail)
+            remaining -= len(tail)
+        except OSError:
+            continue
+    return "\n".join(parts)
