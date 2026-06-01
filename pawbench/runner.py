@@ -204,14 +204,31 @@ class BenchmarkRunner:
 
     # ── internals ─────────────────────────────────────────────────────────────
 
+    # Anomaly IDs that indicate an API quota/rate-limit problem.  When any of
+    # these fire we always retry — even if the run finished with status=success,
+    # because the agent's internal retry may have masked the 429 at the
+    # transcript level while still producing a degraded result.
+    _RATE_LIMIT_ANOMALY_IDS = frozenset({
+        "API_RATE_LIMIT",
+        "API_SERVER_ERROR",
+        "TERMINAL_API_FAILURE",
+    })
+    # How long to wait before a rate-limit retry (seconds).  Each successive
+    # attempt doubles the delay so we back off gracefully.
+    _RATE_LIMIT_RETRY_BASE_SECONDS = 30
+
     async def _run_with_retry(self, task: Any, cfg: dict[str, Any]) -> TaskResult:
         """Execute a task with up to ``self.max_retries`` attempts.
 
         A retry is triggered when:
         * ``status == "error"`` or ``timed_out == True`` (execution failure), OR
         * ``anomaly.has_error`` is True (infrastructure failure detected after
-          a nominally "successful" run, e.g. TERMINAL_API_FAILURE caused by
-          API quota exhaustion mid-task).
+          a nominally "successful" run), OR
+        * any API rate-limit / quota anomaly fired (API_RATE_LIMIT,
+          API_SERVER_ERROR, TERMINAL_API_FAILURE) — these are retried with an
+          exponential back-off even when status=success, because the agent's
+          internal retry mechanism can mask 429 errors at the transcript level
+          while still producing a degraded / zero-score result.
 
         Passing results with no anomaly errors are returned immediately.
         """
@@ -222,17 +239,28 @@ class BenchmarkRunner:
             last = await self._run_one(task, cfg)
             execution_failed = last.status in ("error",) or last.timed_out
             anomaly_error = last.anomaly.get("has_error", False)
-            if not execution_failed and not anomaly_error:
+            triggered_ids = {i["id"] for i in last.anomaly.get("items", [])}
+            rate_limit_hit = bool(triggered_ids & self._RATE_LIMIT_ANOMALY_IDS)
+            if not execution_failed and not anomaly_error and not rate_limit_hit:
                 return last
             if attempt < self.max_retries:
                 if last.timed_out:
                     reason = "timed_out"
                 elif execution_failed:
                     reason = f"status={last.status}"
+                elif rate_limit_hit:
+                    matched = triggered_ids & self._RATE_LIMIT_ANOMALY_IDS
+                    reason = f"rate_limit=[{', '.join(sorted(matched))}]"
                 else:
                     ids = [i["id"] for i in last.anomaly.get("items", []) if i.get("severity") == "error"]
                     reason = f"anomaly_errors=[{', '.join(ids[:3])}]"
-                print(f"    ! attempt {attempt} failed ({reason}), will retry…")
+                wait = 0.0
+                if rate_limit_hit and not execution_failed:
+                    wait = self._RATE_LIMIT_RETRY_BASE_SECONDS * (2 ** (attempt - 1))
+                    print(f"    ! attempt {attempt} failed ({reason}), backing off {wait:.0f}s before retry…")
+                    await asyncio.sleep(wait)
+                else:
+                    print(f"    ! attempt {attempt} failed ({reason}), will retry…")
         return last  # type: ignore[return-value]
 
     async def _run_one(self, task: Any, cfg: dict[str, Any]) -> TaskResult:

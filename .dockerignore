@@ -1,0 +1,16 @@
+# Large directories not needed in the image build context
+examples/
+benchmarks/
+results/
+test_results/
+sample_results/
+.git/
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.DS_Store
+*.egg-info/
+.venv/
+venv/

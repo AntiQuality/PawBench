@@ -12,6 +12,7 @@ Ported from examples/QwenClawBench/scripts/lib_anomalies.py.
 from __future__ import annotations
 
 import json
+import re
 from typing import Any, Dict, List
 
 
@@ -155,16 +156,62 @@ def _check_grading_missing_function(exec_r, notes, transcript_text, stderr):
 
 
 def _check_api_rate_limit(exec_r, notes, transcript_text, stderr):
-    # Only inspect LLM API error messages (assistant stopReason='error' errorMessage)
-    # and stderr.  Scanning full transcript_text causes false positives when task
-    # content (e.g. a SKILL.md that documents API rate limits) mentions these terms.
+    # Primary: inspect LLM API error messages (assistant stopReason='error'
+    # errorMessage) and stderr — avoids false positives from task content that
+    # mentions rate-limit terminology.
     transcript = exec_r.get("transcript", [])
-    combined = (_extract_llm_api_errors(transcript) + "\n" + (stderr or "")).lower()
-    if _scan_text_for_keywords(combined, [
+    api_errors = _extract_llm_api_errors(transcript)
+    combined = (api_errors + "\n" + (stderr or "")).lower()
+    keywords = [
         "429", "rate limit", "rate_limit", "too many requests", "ratelimit",
         "resource_exhausted", "resource has been exhausted",
-    ]):
+        "you exceeded your current quota",
+        "request rate increased too quickly",
+        "api rate limit reached",
+    ]
+    if _scan_text_for_keywords(combined, keywords):
         return "API rate limit detected in LLM API error response"
+
+    # Fallback: some agents (e.g. qwenpaw) retry 429s internally and the
+    # transcript never gets a stopReason=error entry. In those cases the
+    # runner passes log_text (from agent log files) via execution_result.
+    #
+    # Use strong, context-aware patterns only to avoid false positives from:
+    #   - UUIDs containing "429" (e.g. "c818074c-9028-4296-993d")
+    #   - floating-point numbers (e.g. "158.42997...")
+    #   - file names (e.g. "1cb429f7...")
+    #   - HTTP port numbers (e.g. ":42910")
+    #   - initialization log lines ("rate limiter initialized")
+    log_text = (exec_r.get("log_text") or "")
+    if log_text:
+        # Each pattern must unambiguously point to a real API rate-limit error.
+        # \b429\b guards against substring matches within longer digit sequences.
+        _LOG_STRONG_RE = re.compile(
+            r"rawError=429"
+            r"|Error code:\s*429"
+            r"|reason=rate_limit"
+            r"|API rate limit reached"
+            r"|You exceeded your current quota"
+            r"|Request rate increased too quickly"
+            r"|\binsufficient_quota\b"
+            r"|\bresource_exhausted\b"
+            r"|LLM judge API returned 429"
+            r"|status[_\s]?code[=:\s]+429\b"
+            r"|HTTP/\S+\s+429\b",
+            re.IGNORECASE,
+        )
+        _LOG_BENIGN_RE = re.compile(
+            r"rate limiter initialized"
+            r"|LLM rate limiter initialized"
+            r"|max_qpm=",
+            re.IGNORECASE,
+        )
+        for line in log_text.splitlines():
+            if _LOG_BENIGN_RE.search(line):
+                continue
+            if _LOG_STRONG_RE.search(line):
+                return "API rate limit detected in agent log (internal retry masked the 429 in transcript)"
+
     return None
 
 

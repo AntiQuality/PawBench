@@ -86,15 +86,24 @@ class TaskLoader:
         logger.info("TaskLoader initialised: %s", tasks_dir)
 
     def load_all_tasks(self) -> List[Task]:
-        """Load every ``task_*.md`` file found in *tasks_dir*."""
+        """Load task Markdown files from *tasks_dir*.
+
+        Supports both legacy ``task_*.md`` naming (claw-eval-converted) and the
+        ``T<N>_*.md`` naming used by pawbench-v1.0 and migrated datasets.  All
+        ``*.md`` files in the directory are loaded; non-task files (e.g. README)
+        are silently skipped if they lack valid YAML front-matter.
+        """
         tasks: List[Task] = []
-        task_files = sorted(self.tasks_dir.glob("task_*.md"))
+        task_files = sorted(self.tasks_dir.glob("*.md"))
         logger.info("Found %d task file(s)", len(task_files))
         for task_file in task_files:
             try:
                 task = self.load_task(task_file)
                 tasks.append(task)
                 logger.debug("Loaded task: %s", task.task_id)
+            except ValueError:
+                # Skip files that lack valid YAML front-matter (e.g. README.md).
+                logger.debug("Skipping non-task file: %s", task_file)
             except Exception:
                 logger.exception("Failed to load task from %s", task_file)
         logger.info("Loaded %d task(s) successfully", len(tasks))
