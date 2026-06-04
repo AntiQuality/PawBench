@@ -69,7 +69,9 @@ jobs:
         working-directory: site
         env:
           PAWBENCH_SITE: https://agentscope-ai.github.io
-          PAWBENCH_BASE: /pawbench/
+          # Repo was renamed to PawBench on 2026-06; keep BASE case-aligned so
+          # canonical Pages URL and in-page asset paths agree.
+          PAWBENCH_BASE: /PawBench/
         # Invoke astro via its installed path rather than via `npm run build`'s
         # PATH resolution, which has bitten us once with `sh: astro: not found`
         # even when `npm ci` reported success.
