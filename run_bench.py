@@ -18,11 +18,8 @@ Quick start
   # Compare all three agents on the same tasks:
   python run_bench.py --agents qwenpaw openclaw hermes --model dashscope/qwen3.6-plus --tasks T002_email_triage
 
-  # Run only the wildclaw-converted dataset:
-  python run_bench.py --dataset wildclaw-converted --model openai/gpt-4o
-
   # Run a specific subset of tasks:
-  python run_bench.py --model openai/gpt-4o --tasks T006_email_reply_draft T002_email_triage
+  python run_bench.py --model openai/gpt-4o --tasks T001 T002
 
   # Run with a custom benchmark path:
   python run_bench.py --benchmark-path /my/pawbench --model openai/gpt-4o
@@ -71,7 +68,7 @@ except ImportError:
 from pawbench import BenchmarkRunner, PawBenchBackend
 
 _SCRIPT_DIR = Path(__file__).parent
-_DEFAULT_BENCHMARK_PATH = _SCRIPT_DIR / "benchmarks" / "pawbench"
+_DEFAULT_BENCHMARK_PATH = _SCRIPT_DIR
 _BENCHMARK_NAME = "pawbench"
 
 
@@ -98,8 +95,7 @@ def parse_args() -> argparse.Namespace:
         metavar="NAME",
         help=(
             "Dataset name inside <benchmark_path>/data/. "
-            "Default: claw-eval-converted. "
-            "Also available: wildclaw-converted."
+            "Default: pawbench-v1.0."
         ),
     )
 
@@ -407,8 +403,7 @@ async def main() -> int:
     benchmark_path = args.benchmark_path or _DEFAULT_BENCHMARK_PATH
     if not benchmark_path.exists():
         print(
-            f"Error: benchmark directory not found: {benchmark_path}\n"
-            f"Expected: benchmarks/pawbench/"
+            f"Error: benchmark directory not found: {benchmark_path}"
         )
         return 1
 

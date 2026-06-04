@@ -3,16 +3,11 @@
 
 Expected directory layout
 -------------------------
-<benchmark_path>/                   ← benchmarks/pawbench/
+<benchmark_path>/                   ← repo root
   data/
-    claw-eval-converted/            ← default dataset
+    pawbench-v1.0/                  ← default dataset
       tasks/
-        task_*.md
-      assets/
-        ...
-    wildclaw-converted/             ← optional second dataset
-      tasks/
-        task_*.md
+        T*.md
       assets/
         ...
 
@@ -24,15 +19,11 @@ Run with OpenClaw Docker agent::
 
     python run_bench.py --agents openclaw --model dashscope/qwen3.6-plus
 
-Run a specific dataset::
-
-    python run_bench.py --dataset wildclaw-converted --model openai/gpt-4o
-
 agent_config keys
 -----------------
 model              str   (required) Model identifier
 agent_type         str   ``"qwenpaw"`` (default) or ``"openclaw"``
-dataset            str   Dataset name under ``data/`` (default: claw-eval-converted)
+dataset            str   Dataset name under ``data/`` (default: pawbench-v1.0)
 docker_image       str   Docker image override
 timeout_multiplier float  Scale task timeouts (default: 1.0)
 thinking_level     str   [openclaw] Thinking level (low/medium/high/xhigh)
@@ -149,7 +140,7 @@ class PawBenchBackend(BenchmarkBackend):
       (docker/Dockerfile.hermes — built from qwenclawbench family)
     """
 
-    DEFAULT_DATASET = "claw-eval-converted"
+    DEFAULT_DATASET = "pawbench-v1.0"
 
     @property
     def name(self) -> str:
