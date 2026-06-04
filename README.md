@@ -21,6 +21,9 @@
   <a href="https://github.com/agentscope-ai/PawBench">
     <img alt="GitHub repo" src="https://img.shields.io/badge/GitHub-pawbench-24292f">
   </a>
+  <a href="LICENSE">
+    <img alt="license" src="https://img.shields.io/badge/license-Apache%202.0-blue">
+  </a>
 </p>
 
 <p align="center">
@@ -59,7 +62,7 @@ Python 3.11+ and Docker are required. Node.js 20+ is only needed for the leaderb
 Install dependencies and add credentials. DashScope is the recommended provider for the default setup:
 
 ```bash
-pip install -r requirements-dev.txt
+pip install -r requirements.txt
 
 cat > .env <<'EOF'
 DASHSCOPE_API_KEY=...
@@ -74,32 +77,19 @@ For OpenAI-compatible or custom providers, set `OPENAI_API_KEY` / `OPENAI_BASE_U
 
 ```bash
 # Smoke test: run one PawBench v1.0 task with the default qwenpaw harness
-python run_bench.py \
-  --benchmark-path . \
-  --dataset pawbench-v1.0 \
-  --tasks T001 \
-  --model openai/gpt-4o
+python run_bench.py --tasks T001 --model openai/gpt-4o
 
 # Pick a different harness
-python run_bench.py \
-  --benchmark-path . \
-  --dataset pawbench-v1.0 \
-  --agents openclaw \
-  --tasks T001 \
-  --model dashscope/qwen3.6-plus
+python run_bench.py --agents openclaw --tasks T001 --model dashscope/qwen3.6-plus
 
 # Compare harnesses on a task subset
 python run_bench.py \
-  --benchmark-path . \
-  --dataset pawbench-v1.0 \
   --agents qwenpaw openclaw hermes \
   --model dashscope/qwen3.6-plus \
   --tasks T002 T006
 
 # Sequentially evaluate multiple models
 python run_bench.py \
-  --benchmark-path . \
-  --dataset pawbench-v1.0 \
   --model openai/gpt-4o \
   --model anthropic/claude-sonnet-4-6
 ```
