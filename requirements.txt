@@ -1,0 +1,23 @@
+# pawbench runtime dependencies
+# Python 3.11+ required
+#
+# Core deps — used by the benchmark runner and grading engine:
+pyyaml>=6.0
+
+# LLM agent support (copaw agent):
+litellm>=1.40.0
+
+# Token counting — offline estimation when agent SDK does not return usage:
+tiktoken>=0.7.0
+pydantic>=2.0.0
+tenacity>=8.0.0
+
+# Grader deps — used by skillbench automated checks (pytest TEST_SOURCE):
+pytest>=7.0.0
+numpy>=1.24.0
+pandas>=2.0.0
+cvxpy>=1.4.0
+openpyxl>=3.1.0
+
+# External tools required at runtime (not pip-installable):
+#   docker   — Docker CLI must be available in PATH

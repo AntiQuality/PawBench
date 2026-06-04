@@ -36,19 +36,40 @@ class OpenClawAgent(ContainerAgent):
     def _openclaw_model_id(self, model_identifier: str) -> str:
         """Translate a pawbench model identifier to an openclaw model identifier.
 
-        openclaw's first-party DashScope integration (``extensions/qwen/``) uses
-        ``"qwen"`` as the canonical provider ID.  Mapping ``dashscope/model`` →
-        ``qwen/model`` ensures the model reference matches the provider key we
-        write into ``openclaw.json``, so the gateway can resolve the agent's model
-        at startup instead of returning ``unknown agent id``.
+        Two translations are applied:
+
+        1. **Alias expansion** – short names like ``opus-4.6`` are expanded to
+           their canonical ``provider/model`` form via ``model_config`` aliases
+           before any provider-specific rewrite.
+
+        2. **Provider mapping**:
+           - ``dashscope/<model>`` → ``qwen/<model>`` (openclaw's native Qwen
+             plugin uses ``"qwen"`` as its provider key)
+           - ``custom/<model>`` → ``custom-<hostname>/<model>`` where
+             ``<hostname>`` is derived from the configured base URL (same logic
+             as ``_configure_openclaw_json``).  This ensures ``openclaw agents
+             add --model <id>`` registers the agent against the provider entry
+             we write into openclaw.json, not the default ``openai`` provider.
         """
-        parts = model_identifier.split("/", 1)
+        from pawbench.llm.model_config import ModelConfigManager
+        # Expand aliases (e.g. "opus-4.6" → "custom/openai.claude-opus-4-6")
+        aliases = ModelConfigManager.get_available_models()
+        expanded = aliases.get(model_identifier.strip(), model_identifier)
+
+        parts = expanded.split("/", 1)
         if len(parts) == 2:
             provider_str = parts[0].lower()
             model_name = parts[1]
             if provider_str == "dashscope":
                 return f"qwen/{model_name}"
-        return model_identifier
+            if provider_str == "custom":
+                base_url = self.config.get("base_url") or os.environ.get("CUSTOM_BASE_URL", "")
+                if base_url:
+                    from urllib.parse import urlparse
+                    hostname = urlparse(base_url).hostname or "custom"
+                    openclaw_provider = "custom-" + hostname.replace(".", "-")
+                    return f"{openclaw_provider}/{model_name}"
+        return expanded
 
     def _resolve_api_key(self, model_config=None) -> str:
         return (
@@ -170,6 +191,28 @@ class OpenClawAgent(ContainerAgent):
                 (add_result.get("stdout") or "")[:500],
                 (add_result.get("stderr") or "")[:500],
             )
+
+        # ``openclaw agents add`` copies the image-baked auth-profiles.json
+        # (containing ``sk-build-placeholder``) into the per-agent directory.
+        # That file takes priority over the apiKey written in openclaw.json and
+        # causes HTTP 401 on every API call.  Overwrite it with the real API key
+        # so the gateway uses the correct credential at runtime.
+        agent_id_lower = agent_id.lower()
+        _provider_for_auth = openclaw_model.split("/")[0]
+        auth_profiles_content = json.dumps({
+            "version": 1,
+            "profiles": {
+                f"{_provider_for_auth}:default": {
+                    "type": "api_key",
+                    "provider": _provider_for_auth,
+                    "key": api_key,
+                }
+            },
+        }, indent=2)
+        await environment.write_file(
+            f"/root/.openclaw/agents/{agent_id_lower}/agent/auth-profiles.json",
+            auth_profiles_content,
+        )
 
         # Point openclaw's global default workspace at the benchmark path so
         # the ACPX runtime routes all file I/O there.  ``agents add --workspace``
@@ -338,11 +381,17 @@ class OpenClawAgent(ContainerAgent):
           to match QwenClawBench defaults and avoid silent task failures.
         """
         try:
+            # Expand model aliases before parsing provider/model.  Short names
+            # like "opus-4.6" must resolve to "custom/openai.claude-opus-4-6"
+            # before we split on "/" to get provider_str and model_name.
+            from pawbench.llm.model_config import ModelConfigManager
+            _aliases = ModelConfigManager.get_available_models()
+            _expanded = _aliases.get(model_identifier.strip(), model_identifier)
             provider_str = (
-                model_identifier.split("/", 1)[0].lower()
-                if "/" in model_identifier else "openai"
+                _expanded.split("/", 1)[0].lower()
+                if "/" in _expanded else "openai"
             )
-            model_name = model_identifier.split("/")[-1]
+            model_name = _expanded.split("/")[-1]
 
             # ── provider id & base URL ─────────────────────────────────────
             #
@@ -475,6 +524,14 @@ class OpenClawAgent(ContainerAgent):
                 f"prov['api'] = {json.dumps(provider_api)}\n"
                 f"prov['baseUrl'] = {json.dumps(effective_base_url)}\n"
                 + f"prov['apiKey'] = {json.dumps(api_key_entry)}\n"
+                # ``auth: "api-key"`` triggers openclaw's early-exit key
+                # resolution path (shouldPreferExplicitConfigApiKeyAuth), which
+                # reads models.providers.*.apiKey BEFORE checking env vars
+                # (QWEN_API_KEY / MODELSTUDIO_API_KEY / DASHSCOPE_API_KEY).
+                # Without this, the container's DASHSCOPE_API_KEY env var can
+                # shadow the correct key we wrote above, causing HTTP 401.
+                # See: src/agents/model-auth.ts resolveApiKeyForProvider()
+                + f"prov['auth'] = 'api-key'\n"
                 # ── primary model entry ────────────────────────────────────
                 "models = prov.setdefault('models', [])\n"
                 f"m = next((x for x in models if x.get('id') == {json.dumps(model_name)} or x.get('name') == {json.dumps(model_name)}), None)\n"
@@ -818,6 +875,21 @@ class OpenClawAgent(ContainerAgent):
                 "--non-interactive",
                 timeout=120,
             )
+            # Overwrite placeholder auth-profiles baked in by agents add.
+            _provider_for_auth = self._openclaw_model_id(model_identifier).split("/")[0]
+            await environment.write_file(
+                f"/root/.openclaw/agents/{agent_id.lower()}/agent/auth-profiles.json",
+                json.dumps({
+                    "version": 1,
+                    "profiles": {
+                        f"{_provider_for_auth}:default": {
+                            "type": "api_key",
+                            "provider": _provider_for_auth,
+                            "key": api_key,
+                        }
+                    },
+                }, indent=2),
+            )
             await environment.write_file(
                 "/tmp/patch_gateway_mode.py",
                 "import json, os\n"
@@ -943,7 +1015,7 @@ class OpenClawAgent(ContainerAgent):
 
         This override appends a synthetic final assistant message containing the
         content of every text/Markdown file that was created *during* the run
-        (identified by mtime >= self._run_start_time).  copaw and hermes are
+        (identified by mtime >= self._run_start_time).  qwenpaw and hermes are
         unaffected because they do not use this class.
         """
         transcript = super().extract_transcript(local_workspace, stdout)

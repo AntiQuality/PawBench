@@ -15,9 +15,12 @@ site/pawbench-site.zip
 .githooks/*
 !.githooks/pre-commit
 
+.env
+
 # raw evaluation runs (large, not source-of-truth — aggregated outputs land
 # in submissions/ via site/scripts/aggregate_results.py)
 result/
+results/
 
 #harness
 .claude/
@@ -27,3 +30,4 @@ analysis/
 task_analysis/
 attribution/
 uv.lock
+run_batch.sh

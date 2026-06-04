@@ -51,7 +51,7 @@ class QwenPawAgent(ContainerAgent):
     No provider JSON files are pre-written to disk.
     """
 
-    def __init__(self, name: str = "copaw", **kwargs: Any):
+    def __init__(self, name: str = "qwenpaw", **kwargs: Any):
         super().__init__(name, **kwargs)
         self._model_config = None
         self._api_key: str = ""
@@ -389,7 +389,7 @@ cli()
             f"export COPAW_SECRET_DIR='{_SECRET_DIR}' && "
             "pip install requests -q 2>/dev/null || true && "
             f"timeout {inner_timeout}s python3 /tmp/call_agent.py "
-            "2>&1 | tee /tmp/copaw_output.txt || true"
+            "2>&1 | tee /tmp/qwenpaw_output.txt || true"
         )
         result = await environment.execute_command(run_cmd, timeout=inner_timeout + 60)
 
@@ -404,7 +404,7 @@ cli()
             timeout=10,
         )
 
-        output_content = await environment.read_file("/tmp/copaw_output.txt") or result["stdout"]
+        output_content = await environment.read_file("/tmp/qwenpaw_output.txt") or result["stdout"]
 
         await self._sync_workspace_to_output(environment, AGENT_WORKSPACE)
 
@@ -728,7 +728,7 @@ __PYEOF__
 
     async def teardown(self, environment: BaseEnvironment) -> None:
         await environment.execute_command(
-            "rm -f /tmp/copaw_output.txt /tmp/call_agent.py "
+            "rm -f /tmp/qwenpaw_output.txt /tmp/call_agent.py "
             "/tmp/task_instruction.txt",
             timeout=10,
         )

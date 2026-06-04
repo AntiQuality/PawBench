@@ -227,6 +227,10 @@ class ModelConfigManager:
             "qwen3-max": "dashscope/qwen3-max",
             "qwen3-plus": "dashscope/qwen3-plus",
             "qwen3-turbo": "dashscope/qwen3-turbo",
+
+            # Custom OpenAI-compatible proxy (CUSTOM_BASE_URL / CUSTOM_API_KEY)
+            "opus-4.6": "custom/openai.claude-opus-4-6",
+            "claude-opus-4.6": "custom/openai.claude-opus-4-6",
         }
 
 

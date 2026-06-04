@@ -26,7 +26,7 @@ cp .env.example .env   # fill in OPENAI_API_KEY / OPENAI_BASE_URL / JUDGE_API_KE
 ### Run Evaluation
 
 ```bash
-# Default: run all tasks with the `copaw` harness
+# Default: run all tasks with the `qwenpaw` harness
 python run_bench.py --model openai/gpt-4o
 
 # Pick a different harness
@@ -34,7 +34,7 @@ python run_bench.py --agents openclaw --model dashscope/qwen3.6-plus
 python run_bench.py --agents hermes   --model dashscope/qwen3.6-plus
 
 # Compare harnesses on a task subset
-python run_bench.py --agents copaw openclaw hermes \
+python run_bench.py --agents qwenpaw openclaw hermes \
                     --model dashscope/qwen3.6-plus \
                     --tasks T002_email_triage T006_email_reply_draft
 

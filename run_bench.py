@@ -6,7 +6,7 @@ pawbench runner  ·  unified entry point for running pawbench tasks
 Quick start
 -----------
 
-  # Run all tasks with the copaw agent (default):
+  # Run all tasks with the qwenpaw agent (default):
   python run_bench.py --model openai/gpt-4o
 
   # Run with OpenClaw agent (copawbench-openclaw:latest):
@@ -16,7 +16,7 @@ Quick start
   python run_bench.py --agents hermes --model dashscope/qwen3.6-plus
 
   # Compare all three agents on the same tasks:
-  python run_bench.py --agents copaw openclaw hermes --model dashscope/qwen3.6-plus --tasks T002_email_triage
+  python run_bench.py --agents qwenpaw openclaw hermes --model dashscope/qwen3.6-plus --tasks T002_email_triage
 
   # Run only the wildclaw-converted dataset:
   python run_bench.py --dataset wildclaw-converted --model openai/gpt-4o
@@ -59,6 +59,15 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
+# Load .env from repo root before anything else so that JUDGE_API_KEY,
+# JUDGE_BASE_URL, DASHSCOPE_API_KEY etc. are available to os.environ.
+# Existing shell exports take priority (override=False).
+try:
+    from dotenv import load_dotenv as _load_dotenv
+    _load_dotenv(Path(__file__).parent / ".env", override=False)
+except ImportError:
+    pass
+
 from pawbench import BenchmarkRunner, PawBenchBackend
 
 _SCRIPT_DIR = Path(__file__).parent
@@ -98,11 +107,11 @@ def parse_args() -> argparse.Namespace:
     run_grp.add_argument(
         "--agents",
         nargs="+",
-        choices=["copaw", "openclaw", "hermes"],
+        choices=["qwenpaw", "openclaw", "hermes"],
         default=None,
         help=(
             "Agent(s) to use. Can be specified multiple times to run all agents sequentially. "
-            "'copaw' (default, qwenclawbench-copaw:latest), "
+            "'qwenpaw' (default, qwenclawbench-qwenpaw:latest), "
             "'openclaw' (openclaw-pawbench:latest), "
             "'hermes' (hermes-qwenclawbench:latest)."
         ),
@@ -122,12 +131,24 @@ def parse_args() -> argparse.Namespace:
         help="Number of tasks to run in parallel (default: 1).",
     )
     exec_grp.add_argument(
-        "--max-retries",
+        "--runs",
         type=int,
         default=1,
+        dest="runs_per_task",
+        metavar="N",
+        help=(
+            "Number of times to run each task (default: 1). "
+            "When N>1, results are aggregated (mean/std/min/max per task, pass@k). "
+            "Mirrors the --runs option of the original QwenClawBench runner."
+        ),
+    )
+    exec_grp.add_argument(
+        "--max-retries",
+        type=int,
+        default=3,
         dest="max_retries",
         metavar="N",
-        help="Maximum attempts per task (default: 1 = no retry).",
+        help="Maximum attempts per task on infrastructure failure (default: 3).",
     )
     exec_grp.add_argument(
         "--timeout-multiplier",
@@ -141,7 +162,7 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help=(
             "Docker image override. "
-            "copaw mode default: qwenclawbench-copaw:latest (pre-built with qwenpaw); "
+            "qwenpaw mode default: qwenclawbench-qwenpaw:latest (pre-built with qwenpaw); "
             "openclaw mode default: ghcr.io/openclaw/openclaw:main."
         ),
     )
@@ -154,9 +175,9 @@ def parse_args() -> argparse.Namespace:
     exec_grp.add_argument(
         "--skip-bootstrap",
         action="store_true",
-        default=True,
+        default=False,
         dest="skip_bootstrap",
-        help="[openclaw] Remove BOOTSTRAP.md from the task workspace before execution.",
+        help="[openclaw] Remove BOOTSTRAP.md / SOUL.md from the task workspace before execution.",
     )
 
     model_grp = p.add_argument_group("Model & API configuration")
@@ -192,7 +213,7 @@ def parse_args() -> argparse.Namespace:
         "--judge",
         default=None,
         metavar="MODEL_ID",
-        help="Judge model identifier (default: claude-opus-4-5-20251101).",
+        help="Judge model identifier (default: $JUDGE_MODEL env var, then claude-opus-4-5-20251101).",
     )
     judge_grp.add_argument(
         "--judge-api-key",
@@ -238,7 +259,7 @@ def parse_args() -> argparse.Namespace:
     out_grp.add_argument(
         "--save-workspace",
         action="store_true",
-        default=True,
+        default=False,
         dest="save_workspace",
         help=(
             "Save the agent workspace (AGENT_WORKSPACE container contents) to "
@@ -292,6 +313,48 @@ def _run_timestamp() -> str:
     return datetime.now().strftime("%Y%m%d_%H%M%S")
 
 
+def _default_base_url_for_model(model: str | None) -> str:
+    """Return the best default base URL for *model* based on its provider type.
+
+    For ``custom`` provider models (e.g. ``custom/openai.claude-opus-4-6``)
+    the ``CUSTOM_BASE_URL`` env var takes precedence over ``OPENAI_BASE_URL``
+    so that custom endpoints can coexist with DashScope models in the same
+    benchmark run without requiring ``--base-url`` on every invocation.
+    """
+    if model:
+        try:
+            from pawbench.llm.model_config import ModelConfigManager, ProviderType
+            cfg = ModelConfigManager.parse_model_identifier(model)
+            if cfg.provider == ProviderType.CUSTOM:
+                return (
+                    os.environ.get("CUSTOM_BASE_URL")
+                    or os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1")
+                )
+        except Exception:
+            pass
+    return os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1")
+
+
+def _default_api_key_for_model(model: str | None) -> str | None:
+    """Return the best default API key for *model* based on its provider type.
+
+    For ``custom`` provider models the ``CUSTOM_API_KEY`` env var takes
+    precedence, allowing a different key without ``--api-key`` every time.
+    """
+    if model:
+        try:
+            from pawbench.llm.model_config import ModelConfigManager, ProviderType
+            cfg = ModelConfigManager.parse_model_identifier(model)
+            if cfg.provider == ProviderType.CUSTOM:
+                return (
+                    os.environ.get("CUSTOM_API_KEY")
+                    or os.environ.get("OPENAI_API_KEY")
+                )
+        except Exception:
+            pass
+    return os.environ.get("OPENAI_API_KEY")
+
+
 def _resolve_per_model_values(
     models: list[str | None],
     api_keys: list[str] | None,
@@ -313,42 +376,15 @@ def _resolve_per_model_values(
     norm_keys = normalize(api_keys, "--api-key")
     norm_base_urls_raw = normalize(base_urls, "--base-url")
     norm_base_urls: list[str] = [
-        bu or os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1")
-        for bu in norm_base_urls_raw
+        bu or _default_base_url_for_model(m)
+        for m, bu in zip(models, norm_base_urls_raw)
     ]
     return models, norm_keys, norm_base_urls
 
 
 # ── main ───────────────────────────────────────────────────────────────────────
 
-def _load_dotenv(env_file: Path | None = None) -> None:
-    """Load key=value pairs from a .env file into os.environ.
-
-    Existing environment variables are NOT overwritten so that explicit
-    shell exports always take precedence over the file.  Lines starting
-    with '#' and blank lines are skipped.  Inline comments after the
-    value are not supported (values are taken verbatim after the '=').
-    """
-    path = env_file or (_SCRIPT_DIR / ".env")
-    if not path.exists():
-        return
-    with open(path) as fh:
-        for raw in fh:
-            line = raw.strip()
-            if not line or line.startswith("#") or "=" not in line:
-                continue
-            key, _, value = line.partition("=")
-            key = key.strip()
-            value = value.strip().strip('"').strip("'")
-            if key and key not in os.environ:
-                os.environ[key] = value
-
-
 async def main() -> int:
-    # Load .env before parse_args so env-var fallbacks in argparse already see
-    # the values (e.g. OPENAI_MODEL, OPENAI_API_KEY, OPENAI_BASE_URL …).
-    _load_dotenv()
-
     args = parse_args()
 
     models: list[str | None]
@@ -366,7 +402,7 @@ async def main() -> int:
         return 1
 
     env_api_key = os.environ.get("OPENAI_API_KEY")
-    api_keys = [k if k is not None else env_api_key for k in api_keys]
+    api_keys = [k if k is not None else _default_api_key_for_model(m) for k, m in zip(api_keys, models)]
 
     benchmark_path = args.benchmark_path or _DEFAULT_BENCHMARK_PATH
     if not benchmark_path.exists():
@@ -381,7 +417,7 @@ async def main() -> int:
         return 1
 
     base_results_dir = Path(args.results_dir)
-    agents = args.agents or ["copaw"]
+    agents = args.agents or ["qwenpaw"]
 
     run_ts = _run_timestamp()
 
@@ -424,7 +460,7 @@ async def _run_benchmark(
     api_key: str | None,
     base_url: str,
     benchmark_path: Path,
-    agent_label: str = "copaw",
+    agent_label: str = "qwenpaw",
 ) -> int:
     print(f"Benchmark : {_BENCHMARK_NAME}")
     print(f"Path      : {benchmark_path}")
@@ -445,6 +481,8 @@ async def _run_benchmark(
 
     if args.judge:
         agent_config["judge_model"] = args.judge
+    elif os.environ.get("JUDGE_MODEL"):
+        agent_config["judge_model"] = os.environ["JUDGE_MODEL"]
 
     resolved_judge_api_key = (
         getattr(args, "judge_api_key", None)
@@ -486,6 +524,7 @@ async def _run_benchmark(
         results_dir=args.results_dir,
         concurrency=args.concurrency,
         max_retries=args.max_retries,
+        runs_per_task=getattr(args, "runs_per_task", 1),
     )
     results = await runner.run(
         agent_config=agent_config,
