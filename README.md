@@ -1,45 +1,95 @@
-# 🐾 PawBench
+<p align="center">
+  <img src="site/public/favicon.svg" width="110" alt="PawBench logo">
+</p>
 
-> Languages: **English** · [简体中文](README.zh-CN.md)
+<h1 align="center">PawBench</h1>
 
-**PawBench is a production-grade AI Agent benchmark focused on evaluating the joint performance of (Foundation Model × Harness) combinations.**
+<p align="center">
+  <a href="README.md"><strong>English</strong></a> ·
+  <a href="README.zh-CN.md">简体中文</a>
+</p>
 
-As AI moves toward production deployment, the role of the Harness has become increasingly critical, and overall Agent performance is truly a product of both the foundation model and the Harness working in synergy. PawBench breaks away from traditional single-dimension model evaluations by allowing both dimensions to be observed independently. This not only precisely diagnoses whether system bottlenecks are 'model-limited' or 'harness-limited' (such as optimizing retries, context management, tool routing, or error recovery), but also comprehensively evaluates the collaborative synergy of different technical combinations—providing scientific, quantitative guidance for architectural design, component selection, and system optimization, thereby accelerating the full lifecycle iteration of AI Agents.
+<p align="center">
+  <img alt="tasks" src="https://img.shields.io/badge/tasks-150-2ea44f">
+  <img alt="models" src="https://img.shields.io/badge/models-9-0969da">
+  <img alt="harnesses" src="https://img.shields.io/badge/harnesses-3-8250df">
+  <a href="https://agentscope-ai.github.io/PawBench/">
+    <img alt="leaderboard" src="https://img.shields.io/badge/leaderboard-live-cf222e">
+  </a>
+  <a href="https://github.com/agentscope-ai/pawbench">
+    <img alt="GitHub repo" src="https://img.shields.io/badge/GitHub-pawbench-24292f">
+  </a>
+</p>
+
+<p align="center">
+  <strong>A benchmark for evaluating foundation models and the harnesses that run them.</strong><br>
+  150 agent tasks · 4,050 model-harness-task cells · score slices, transcripts, grader artifacts, and replayable runs.
+</p>
+
+## Overview
+
+The same model can behave very differently in different agent runtimes. When a task fails, the problem might be the model, the available tools, the workspace setup, or a completion check that was too loose. A final pass rate alone cannot tell these apart.
+
+PawBench evaluates the model and the harness together:
 
 $$\text{Agent Performance} = f(\text{Foundation Model}, \text{Harness})$$
 
-PawBench v1.0 curates 150 production-grade representative tasks from the community, deeply annotated based on a five-dimensional orthogonal taxonomy (Scenario, Capability, Complexity, Modality, Environment). Together with a secure, container-isolated Docker sandbox, it provides developers with a multi-dimensional, scientifically reproducible Agent comprehensive evaluation capability and leaderboard.
+v1.0 covers **9 models × 3 harnesses × 150 tasks**. The first run shows a **5.6-point** average gap between the strongest and weakest harnesses, comparable to some model upgrades. On `qwen3.6-35b-a3b`, switching only the harness moves the score by **11.5 points**.
+
+![PawBench leaderboard overview](site/public/pawbench-leaderboard-overview.png)
 
 ## Quick Start
 
 ### Requirements
 
-- Python >= 3.10
-- Docker (some harnesses run tasks in isolated containers)
+Python 3.11+ and Docker are required. Node.js 20+ is only needed for the leaderboard site.
 
-**Install dependencies and configure credentials:**
+Install dependencies and add credentials. DashScope is the recommended provider for the default setup:
+
 ```bash
 pip install -r requirements-dev.txt
-cp .env.example .env   # fill in OPENAI_API_KEY / OPENAI_BASE_URL / JUDGE_API_KEY ...
+
+cat > .env <<'EOF'
+DASHSCOPE_API_KEY=...
+JUDGE_API_KEY=...
+JUDGE_BASE_URL=...
+EOF
 ```
+
+For OpenAI-compatible or custom providers, set `OPENAI_API_KEY` / `OPENAI_BASE_URL` or `CUSTOM_API_KEY` / `CUSTOM_BASE_URL` as needed.
 
 ### Run Evaluation
 
 ```bash
-# Default: run all tasks with the `qwenpaw` harness
-python run_bench.py --model openai/gpt-4o
+# Smoke test: run one PawBench v1.0 task with the default qwenpaw harness
+python run_bench.py \
+  --benchmark-path . \
+  --dataset pawbench-v1.0 \
+  --tasks T001 \
+  --model openai/gpt-4o
 
 # Pick a different harness
-python run_bench.py --agents openclaw --model dashscope/qwen3.6-plus
-python run_bench.py --agents hermes   --model dashscope/qwen3.6-plus
+python run_bench.py \
+  --benchmark-path . \
+  --dataset pawbench-v1.0 \
+  --agents openclaw \
+  --tasks T001 \
+  --model dashscope/qwen3.6-plus
 
 # Compare harnesses on a task subset
-python run_bench.py --agents qwenpaw openclaw hermes \
-                    --model dashscope/qwen3.6-plus \
-                    --tasks T002_email_triage T006_email_reply_draft
+python run_bench.py \
+  --benchmark-path . \
+  --dataset pawbench-v1.0 \
+  --agents qwenpaw openclaw hermes \
+  --model dashscope/qwen3.6-plus \
+  --tasks T002 T006
 
 # Sequentially evaluate multiple models
-python run_bench.py --model openai/gpt-4o --model anthropic/claude-sonnet-4-6
+python run_bench.py \
+  --benchmark-path . \
+  --dataset pawbench-v1.0 \
+  --model openai/gpt-4o \
+  --model anthropic/claude-sonnet-4-6
 ```
 
 Results are written under `./results/<YYYYMMDD_HHMMSS>/pawbench/<model>/<agent>/`. See `python run_bench.py --help` for all flags (`--no-results-version-path`, `--save-workspace`, `--save-docker-image`, ...).
@@ -50,93 +100,71 @@ Results are written under `./results/<YYYYMMDD_HHMMSS>/pawbench/<model>/<agent>/
 cd site
 npm install
 npm run build:data    # aggregate raw run logs into submissions/ and JSON for the UI
-npm run dev           # http://localhost:4321
+npm run dev           # http://localhost:4321/PawBench/
 ```
 
-## Harnesses
+## PawBench Design
 
-| Harness | Description |
-| :--- | :--- |
-| **OpenClaw** | Container-isolated, tool-rich agent runtime — the lingua franca of recent agent evaluations. |
-| **QwenPaw** | Alibaba's internal harness, optimized for DashScope and Qwen-series tool calling. |
-| **Hermes** | A minimal scaffolding harness used as the weak-baseline floor. |
+### Tasks
 
-More harnesses (e.g. **CoPaw**, **Cursor Agent**, and other community scaffolds) will be onboarded over time. PRs to integrate a new harness are very welcome.
-
-## Tasks
-
-PawBench follows a **Reuse & Tag** methodology — we build on top of established community benchmarks rather than authoring tasks from scratch:
-
-1. Pull tasks from high-quality upstream suites (`claw-eval`, `qwenclawbench`, `qwenpawbench`, `pinchbench`, `skillsbench`, `wildclawbench`, ...).
-2. Tag every task across a five-dimensional, orthogonal taxonomy.
-3. Apply multi-stage filtering (complexity ratios, safety quotas, tool variety, reproducibility) to freeze a curated suite (**150 tasks in v1.0**).
-
-### Five-Dimensional Tag System
+PawBench follows a **Reuse & Tag** methodology. Instead of writing every task from scratch, it pulls tasks from established agent benchmark suites, normalizes them into one format, and tags each task across five orthogonal dimensions.
 
 | Dimension | Field | Values |
 | :--- | :--- | :--- |
-| **Scenario** | `scenario` | 13 L1 categories × N L2 sub-scenarios (e.g. `Office_Productivity`, `Software_Engineering`, `Safety_Alignment`) |
-| **Capability** | `capabilities` | 7 atomic skills: `Logic_Reasoning`, `Math_Computation`, `Code_Manipulation`, `Tool_Use`, `Skill_Use`, `Planning`, `Self_Verification` |
-| **Complexity** | `complexity` | `L1` (1–2 steps) / `L2` (3–5 steps) / `L3` (>5 steps with branches/backtracking) |
-| **Modality** | `modality` | `text` or `multimodal` (`image`, `audio`, `video`) |
-| **Environment** | `environment` | `closed` (fully offline, reproducible) / `open` (live internet / SaaS APIs) |
+| Scenario | `scenario` | 13 L1 categories such as `Office_Productivity`, `Software_Engineering`, `Safety_Alignment` |
+| Capability | `capabilities` | `Logic_Reasoning`, `Math_Computation`, `Code_Manipulation`, `Tool_Use`, `Skill_Use`, `Planning`, `Self_Verification` |
+| Complexity | `complexity` | `L1` (1-2 steps), `L2` (3-5 steps), `L3` (>5 steps with branches or backtracking) |
+| Modality | `modality` | `text` or `multimodal` (`image`, `audio`, `video`) |
+| Environment | `environment` | `closed` (offline, reproducible) or `open` (live internet / SaaS APIs) |
 
-> **Design principle:** scenario is orthogonal to capability. "Financial reasoning" splits into `scenario: Finance_Investment` + `capabilities: [Logic_Reasoning]`, keeping each slice dimension single-variable.
+v1.0 contains **150 tasks** from `claweval`, `qwenclawbench`, `pinchbench`, `qwenpawbench`, `skillsbench`, and `wildclawbench`.
 
-### v1.0 Distribution (150 tasks)
+| Source | # | Main coverage |
+| :--- | ---: | :--- |
+| [`claweval`](https://github.com/claw-eval/claw-eval) | 52 | Office productivity, data analytics, content creation |
+| [`qwenclawbench`](https://github.com/SKYLENAGE-AI/QwenClawBench) | 29 | Automation, software engineering, safety alignment |
+| `pinchbench` | 23 | Office workflows, software engineering, information retrieval |
+| `qwenpawbench` | 21 | Automation, information retrieval, safety alignment |
+| [`skillsbench`](https://github.com/benchflow-ai/skillsbench) | 15 | Long-horizon skills, domain automation |
+| [`wildclawbench`](https://github.com/InternLM/WildClawBench) | 10 | Office workflows, safety alignment |
 
-**Scenario (L1):**
+### Harnesses
 
-| Scenario | # | Scenario | # |
-| :--- | ---: | :--- | ---: |
-| Office_Productivity | 30 | Content_Creation | 15 |
-| Software_Engineering | 25 | Information_Retrieval | 10 |
-| Safety_Alignment | 19 | Knowledge | 5 |
-| Automation_Platform | 19 | Manufacturing_Engineering | 5 |
-| Data_Analytics | 18 | Finance_Investment / Legal | 3 / 1 |
+| Harness | Link |
+| :--- | :--- |
+| QwenPaw | [agentscope-ai/QwenPaw](https://github.com/agentscope-ai/QwenPaw) |
+| OpenClaw | [openclaw/openclaw](https://github.com/openclaw/openclaw) |
+| Hermes | [NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent) |
 
-**Upstream source breakdown:**
+### Evaluation setup
 
-| Source | # | L1 / L2 / L3 | closed / open | text / multimodal | Notable focus (top L1 scenarios) |
-| :--- | ---: | :---: | :---: | :---: | :--- |
-| [`claweval`](https://github.com/claw-eval/claw-eval)             | 52 | 2 / 7 / 43 | 48 / 4 | 37 / 15 | Office_Productivity, Data_Analytics, Content_Creation |
-| [`qwenclawbench`](https://github.com/SKYLENAGE-AI/QwenClawBench) | 29 | 0 / 0 / 29 | 28 / 1 | 27 / 2 | Automation_Platform, Software_Engineering, Safety_Alignment |
-| `pinchbench`                                                     | 23 | 3 / 5 / 15 | 15 / 8 | 22 / 1 | Office_Productivity, Software_Engineering, Information_Retrieval |
-| `qwenpawbench`                                                   | 21 | 5 / 14 / 2 | 13 / 8 | 16 / 5 | Automation_Platform, Information_Retrieval, Safety_Alignment |
-| `skillsbench`                                                    | 15 | 0 / 0 / 15 | 15 / 0 | 14 / 1 | Software_Engineering, Manufacturing_Engineering |
-| [`wildclawbench`](https://github.com/InternLM/WildClawBench)     | 10 | 2 / 3 / 5  | 10 / 0 | 8 / 2  | Office_Productivity, Safety_Alignment |
-| **Total**                                                        | **150** | **12 / 29 / 109** | **129 / 21** | **124 / 26** | |
+Each task declares one of three grading modes:
 
-## Project Structure
+- `automated`: task-specific checks and assertions.
+- `llm_judge`: LLM-as-judge for semantic outputs.
+- `hybrid`: automated checks plus LLM judgment.
 
-```text
-pawbench/
-├── data/pawbench-v1.0/    # Curated evaluation task suite (v1.0)
-│   ├── tasks/             # Task Markdown specs (YAML frontmatter + sections)
-│   └── assets/            # Mock workspace files mounted into agent containers
-├── pawbench/              # Core Python package
-│   ├── agents/            # Harness adapters
-│   │   └── impl/          # openclaw / qwenpaw / hermes implementations
-│   ├── envs/              # Execution environments (Docker, ...)
-│   ├── llm/               # Model & judge LLM configuration
-│   ├── utils/             # Anomaly detection, model-ID helpers, ...
-│   ├── runner.py          # Per-task execution loop
-│   ├── grader.py          # Automated + LLM-judge + hybrid grading
-│   ├── backend.py         # Submission aggregation
-│   └── task_loader.py     # Task Markdown parser
-├── run_bench.py           # Unified Model × Harness CLI runner
-├── result/                # Raw run metrics and traces (gitignored)
-├── submissions/           # Rolled-up Model × Harness results (.json)
-├── site/                  # Astro + React leaderboard
-├── scripts/               # Repo utilities (e.g. pre-commit setup)
-├── .githooks/             # Versioned git hooks
-├── pawbench-snapshot.html # Self-contained offline leaderboard snapshot
-├── pyproject.toml
-└── requirements-dev.txt
-```
+Runs can be sliced by source, scenario, capability, complexity, modality, environment, grading type, model, and harness. PawBench also stores transcripts and metrics for each task. With `--save-workspace` and `--save-docker-image`, it can preserve the agent workspace and final Docker image for deeper replay.
+
+## Roadmap
+
+☐ Add more harnesses, including Claude Code, Cursor Agent, CoPaw, and community scaffolds.
+
+☐ Turn the blog findings into controlled experiments, especially around tool count, workspace awareness, skill discovery, web tools, and artifact-level completion checks.
+
+☐ Add more task types for deeper harness stress testing, especially open-environment, multimodal, skill-heavy, and long-horizon tasks.
+
+☐ Improve trace replay and slice diagnostics so harness regressions are easier to isolate.
+
+## Contributing
+
+Contributions are welcome in four areas:
+
+- Integrate a new harness.
+- Submit model evaluation results.
+- Add tasks and annotate them with the five-label taxonomy.
+- Improve the leaderboard, slice analysis, or trace tooling.
 
 ## Acknowledgments
 
-PawBench is built on top of the work of the open-source agent evaluation community, including [Claw-Eval](https://github.com/claw-eval/claw-eval), [QwenClawBench](https://github.com/SKYLENAGE-AI/QwenClawBench), [WildClawBench](https://github.com/InternLM/WildClawBench), [PinchBench](https://github.com/pinchbench/skill), and others.
-
-Contributions welcome — open an issue or PR to add tasks, integrate a new harness, or improve the leaderboard.
+PawBench is built on top of the open-source agent evaluation community, including [Claw-Eval](https://github.com/claw-eval/claw-eval), [QwenClawBench](https://github.com/SKYLENAGE-AI/QwenClawBench), [WildClawBench](https://github.com/InternLM/WildClawBench), [PinchBench](https://github.com/pinchbench/skill), [skillsbench](https://github.com/benchflow-ai/skillsbench), and others.
