@@ -28,6 +28,8 @@
   150 agent tasks | 4,050 model-harness-task cells | score slices, transcripts, grader artifacts, and replayable runs.
 </p>
 
+---
+
 The same model can behave very differently in different agent runtimes. When a task fails, the problem might be the model, the available tools, the workspace setup, or a completion check that was too loose. A final pass rate alone cannot tell these apart.
 
 PawBench evaluates the model and the harness together:
