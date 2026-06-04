@@ -316,6 +316,10 @@ def _default_base_url_for_model(model: str | None) -> str:
     the ``CUSTOM_BASE_URL`` env var takes precedence over ``OPENAI_BASE_URL``
     so that custom endpoints can coexist with DashScope models in the same
     benchmark run without requiring ``--base-url`` on every invocation.
+
+    For built-in providers, return the provider-specific default URL parsed by
+    ``ModelConfigManager`` (e.g. Anthropic, Gemini, DashScope) instead of
+    always falling back to ``OPENAI_BASE_URL``.
     """
     if model:
         try:
@@ -326,6 +330,8 @@ def _default_base_url_for_model(model: str | None) -> str:
                     os.environ.get("CUSTOM_BASE_URL")
                     or os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1")
                 )
+            if cfg.base_url:
+                return cfg.base_url
         except Exception:
             pass
     return os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1")

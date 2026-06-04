@@ -21,7 +21,7 @@ site/pawbench-site.zip
 # in submissions/ via site/scripts/aggregate_results.py)
 result/
 results/
-
+examples/
 #harness
 .claude/
 .ruff_cache
