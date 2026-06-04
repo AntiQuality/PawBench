@@ -28,8 +28,6 @@
   150 agent tasks | 4,050 model-harness-task cells | score slices, transcripts, grader artifacts, and replayable runs.
 </p>
 
-## Overview
-
 The same model can behave very differently in different agent runtimes. When a task fails, the problem might be the model, the available tools, the workspace setup, or a completion check that was too loose. A final pass rate alone cannot tell these apart.
 
 PawBench evaluates the model and the harness together:
@@ -41,6 +39,12 @@ v1.0 covers **9 models × 3 harnesses × 150 tasks**. The first run shows a **5.
 See the [live leaderboard](https://agentscope-ai.github.io/PawBench/) for the full matrix and slice analysis.
 
 ![PawBench leaderboard overview](site/public/pawbench-leaderboard-overview.png)
+
+With PawBench, you can:
+
+- **Select:** Pick a model × harness setup for text, multimodal, skill, and web-search workloads.
+- **Diagnose:** Compare a harness against the same model set and see which task slices it trails on.
+- **Iterate:** Inspect traces and rerun slices after a fix to check whether the targeted score actually moves.
 
 ## Quick Start
 
@@ -168,6 +172,20 @@ Contributions are welcome in four areas:
 - Submit model evaluation results.
 - Add tasks and annotate them with the five-label taxonomy.
 - Improve the leaderboard, slice analysis, or trace tooling.
+
+## Citation
+
+If you use PawBench in your research or project, please cite it as:
+
+```bibtex
+@misc{pawbench,
+  title  = {PawBench: A benchmark for evaluating LLM × harness performance},
+  author = {The OpenJudge Team},
+  url    = {https://github.com/agentscope-ai/PawBench},
+  month  = {06},
+  year   = {2026}
+}
+```
 
 ## Acknowledgments
 
