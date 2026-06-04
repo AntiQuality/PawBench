@@ -1,9 +1,12 @@
 import { useMemo, useState } from 'react';
-import type { LeaderboardData } from '@/lib/types';
+import type { LeaderboardData, LeaderboardMatrix } from '@/lib/types';
 import { cn, harnessLabel, harnessVersion } from '@/lib/utils';
+
+export type MatrixScope = 'overall' | 'text' | 'multimodal';
 
 interface Props {
   data: LeaderboardData;
+  scope?: MatrixScope;
   labels: {
     title: string;
     empty: string;
@@ -33,13 +36,29 @@ function colorFor(v: number | null): string {
   return 'bg-rose-200 text-rose-900';
 }
 
-export default function HarnessMatrix({ data, labels }: Props) {
-  const { matrix, is_mock, harnesses: harnessesMeta } = data;
+export default function HarnessMatrix({ data, scope = 'overall', labels }: Props) {
+  const { is_mock, harnesses: harnessesMeta } = data;
+  const matrix: LeaderboardMatrix =
+    scope === 'text'
+      ? (data.matrix_text ?? data.matrix)
+      : scope === 'multimodal'
+        ? (data.matrix_multimodal ?? data.matrix)
+        : data.matrix;
   const { harnesses, rows } = matrix;
   const [hoverModel, setHoverModel] = useState<string | null>(null);
 
+  // On the multimodal scope, drop text-only models — they don't actually
+  // process image/audio/video; their numbers come from harness-supplied text
+  // fallbacks and would mislead the comparison.
+  const visibleRows = useMemo(
+    () => (scope === 'multimodal'
+      ? rows.filter((r) => !TEXT_ONLY_MODELS.has(String(r.model)))
+      : rows),
+    [rows, scope],
+  );
+
   const enriched = useMemo(() => {
-    const mapped = rows.map((r) => {
+    const mapped = visibleRows.map((r) => {
       const vals = harnesses
         .map((h) => r[h])
         .filter((v): v is number => typeof v === 'number');
@@ -50,18 +69,18 @@ export default function HarnessMatrix({ data, labels }: Props) {
       return { ...r, _best: best, _delta: delta, _avg: avg };
     });
     return mapped.sort((a, b) => (b._avg ?? -Infinity) - (a._avg ?? -Infinity));
-  }, [rows, harnesses]);
+  }, [visibleRows, harnesses]);
 
   const harnessAvgs = useMemo(() => {
     const out: Record<string, number | null> = {};
     for (const h of harnesses) {
-      const vs = rows
+      const vs = visibleRows
         .map((r) => r[h])
         .filter((v): v is number => typeof v === 'number');
       out[h] = mean(vs);
     }
     return out;
-  }, [rows, harnesses]);
+  }, [visibleRows, harnesses]);
 
   const grandAvg = useMemo(() => {
     const vs = enriched

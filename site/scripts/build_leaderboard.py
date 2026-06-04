@@ -276,18 +276,32 @@ def normalize(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return out
 
 
-def build_matrix(rows: list[dict[str, Any]]) -> dict[str, Any]:
+def _build_matrix_for(
+    rows: list[dict[str, Any]],
+    score_of: Any,  # Callable[[row], float | None]
+) -> dict[str, Any]:
+    """Generic matrix builder. ``score_of(row)`` picks a scalar (or None) per row.
+
+    Returns ``{models, harnesses, rows: [{model, <h>: float|None, ...}]}``,
+    sorted by per-row mean across harnesses (descending).
+    """
     models = sorted({r["model"] for r in rows})
     harnesses = sorted({r["harness"] for r in rows})
-    cells: dict[str, dict[str, float]] = {m: {h: float("nan") for h in harnesses} for m in models}
+    cells: dict[str, dict[str, float | None]] = {m: dict.fromkeys(harnesses) for m in models}
     for r in rows:
-        cells[r["model"]][r["harness"]] = r["overall"]
+        v = score_of(r)
+        if v is None:
+            continue
+        try:
+            cells[r["model"]][r["harness"]] = float(v)
+        except (TypeError, ValueError):
+            continue
     matrix = []
     for m in models:
-        row = {"model": m}
+        row: dict[str, Any] = {"model": m}
         for h in harnesses:
             v = cells[m][h]
-            row[h] = None if v != v else round(v, 4)
+            row[h] = None if v is None else round(v, 4)
         matrix.append(row)
 
     def _row_avg(row: dict[str, Any]) -> float:
@@ -296,6 +310,19 @@ def build_matrix(rows: list[dict[str, Any]]) -> dict[str, Any]:
 
     matrix.sort(key=_row_avg, reverse=True)
     return {"models": [r["model"] for r in matrix], "harnesses": harnesses, "rows": matrix}
+
+
+def build_matrix(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    return _build_matrix_for(rows, lambda r: r.get("overall"))
+
+
+def build_matrix_by_modality(rows: list[dict[str, Any]], modality: str) -> dict[str, Any]:
+    """Build a matrix using ``by_modality[modality]`` as the cell value.
+
+    A model × harness cell is ``None`` when that subset has no scored tasks
+    (e.g. text-only models with no multimodal samples in the run).
+    """
+    return _build_matrix_for(rows, lambda r: (r.get("by_modality") or {}).get(modality))
 
 
 def collect_harness_meta(rows: list[dict[str, Any]]) -> dict[str, dict[str, str]]:
@@ -320,6 +347,8 @@ def main() -> int:
         "is_mock": is_mock,
         "rows": rows,
         "matrix": build_matrix(rows),
+        "matrix_text": build_matrix_by_modality(rows, "text"),
+        "matrix_multimodal": build_matrix_by_modality(rows, "multimodal"),
         "harnesses": collect_harness_meta(rows),
         "generated_at": date.today().isoformat(),
     }

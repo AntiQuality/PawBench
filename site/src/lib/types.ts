@@ -62,6 +62,8 @@ export interface LeaderboardData {
   is_mock: boolean;
   rows: LeaderboardRow[];
   matrix: LeaderboardMatrix;
+  matrix_text?: LeaderboardMatrix;
+  matrix_multimodal?: LeaderboardMatrix;
   harnesses?: Record<string, HarnessMeta>;
   generated_at: string;
 }
