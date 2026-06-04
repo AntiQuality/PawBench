@@ -38,6 +38,8 @@ $$\text{Agent Performance} = f(\text{LLM}, \text{Harness})$$
 
 v1.0 covers **9 models × 3 harnesses × 150 tasks**. The first run shows a **5.6-point** average gap between the strongest and weakest harnesses, comparable to some model upgrades. On `qwen3.6-35b-a3b`, switching only the harness moves the score by **11.5 points**.
 
+See the [live leaderboard](https://agentscope-ai.github.io/PawBench/) for the full matrix and slice analysis.
+
 ![PawBench leaderboard overview](site/public/pawbench-leaderboard-overview.png)
 
 ## Quick Start
