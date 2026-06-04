@@ -36,7 +36,9 @@ PawBench evaluates the model and the harness together:
 
 $$\text{Agent Performance} = f(\text{LLM}, \text{Harness})$$
 
-v1.0 covers **9 models × 3 harnesses × 150 tasks**. The first run shows a **5.6-point** average gap between the strongest and weakest harnesses, comparable to some model upgrades. On `qwen3.6-35b-a3b`, switching only the harness moves the score by **11.5 points**.
+v1.0 covers **9 models × 3 harnesses × 150 tasks**. Our initial evaluation reveals a critical insight: **the impact of the agent harness is just as significant as upgrading the LLM itself.**
+
+Across all tested models, different harnesses introduce an average performance gap of **5.6 points** (comparable to a major model upgrade). For specific models like `qwen3.6-35b-a3b`, **simply switching the harness yields an 11.5-point boost**—outperforming the gain of upgrading to a much larger model size on a sub-optimal runtime.
 
 See the [live leaderboard](https://agentscope-ai.github.io/PawBench/) for the full matrix and slice analysis.
 

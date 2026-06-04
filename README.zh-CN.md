@@ -36,7 +36,9 @@ PawBench 同时评估模型和承载模型运行的 Harness：
 
 $$\text{Agent 表现} = f(\text{LLM}, \text{Harness})$$
 
-v1.0 覆盖 **9 个模型 × 3 个 Harness × 150 道任务**。第一批结果显示，三家 Harness 的平均分最高和最低相差 **5.6 分**，已经接近一些模型版本升级带来的收益。以 `qwen3.6-35b-a3b` 为例，只切换 Harness，分数差距达到 **11.5 分**。
+v1.0 覆盖 **9 个模型 × 3 个 Harness × 150 道任务**。首期评测揭示了一个核心洞察：**Harness（智能体运行框架）对最终效果的影响，丝毫不亚于 LLM 自身的升级。**
+
+在所有模型上，不同 Harness 带来的平均性能极差达到了 **5.6 分**（相当于一次模型大版本升级）。而在 `qwen3.6-35b-a3b` 上，**仅通过切换 Harness 就能带来高达 11.5 分的提升** —— 这一效果甚至超越了在低效 Harness 下直接将模型升级到更大尺寸的表现。
 
 完整矩阵和切片分析见 [live leaderboard](https://agentscope-ai.github.io/PawBench/)。
 
