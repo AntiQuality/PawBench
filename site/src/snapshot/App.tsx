@@ -140,7 +140,7 @@ export default function App() {
         onLocale={setLocale}
         dark={dark}
         onDark={setDark}
-        title={t('site.title', 'pawbench')}
+        title={t('site.title', 'PawBench')}
         snapshotLabel={t('snapshot.badge', 'Snapshot')}
         generatedAt={D.generatedAt}
         tab={tab}

@@ -1,5 +1,5 @@
 {
-  "site.title": "pawbench",
+  "site.title": "PawBench",
   "site.tagline": "评估 (Model × Harness) 在生产环境任务的表现",
   "site.description": "同一组 150 任务跑遍多个 (Model × Harness) 组合，独立观察两条轴——分清模型和 Harness 各自的贡献。",
   "hero.formula": "Agent 表现 = f(模型, Harness)",
@@ -120,7 +120,7 @@
   "howItWorks.step3.desc": "Python grade() 函数与 LLM judge 双重评分，hybrid 任务在自动分 < 0.75 时直接清零",
 
   "cite.title": "引用",
-  "cite.subtitle": "如果 pawbench 帮助了你的研究，请引用",
+  "cite.subtitle": "如果 PawBench 帮助了你的研究，请引用",
   "cite.copy": "复制",
   "cite.copied": "已复制",
 

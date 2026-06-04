@@ -12,9 +12,9 @@ interface Props {
 
 const { locale, title, description } = Astro.props;
 
-const fullTitle = title ? `${title} · pawbench` : `pawbench — ${t(locale, 'site.tagline')}`;
+const fullTitle = title ? `${title} · PawBench` : `PawBench — ${t(locale, 'site.tagline')}`;
 const desc = description ?? t(locale, 'site.description');
-const pathname = Astro.url.pathname.replace(/^\/pawbench/, '') || '/';
+const pathname = Astro.url.pathname.replace(/^\/PawBench/i, '') || '/';
 ---
 
 <!doctype html>

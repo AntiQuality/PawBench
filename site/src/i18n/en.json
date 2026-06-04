@@ -1,5 +1,5 @@
 {
-  "site.title": "pawbench",
+  "site.title": "PawBench",
   "site.tagline": "How (Model × Harness) combinations perform on production-grade tasks",
   "site.description": "The same 150 tasks across (Model × Harness) combinations — read each axis independently and separate the model's contribution from the harness's.",
   "hero.formula": "Agent Performance = f(Model, Harness)",
@@ -120,7 +120,7 @@
   "howItWorks.step3.desc": "Python grade() functions plus an LLM judge; hybrid tasks zero the LLM share if automated < 0.75",
 
   "cite.title": "Citation",
-  "cite.subtitle": "If pawbench helps your research, please cite",
+  "cite.subtitle": "If PawBench helps your research, please cite",
   "cite.copy": "Copy",
   "cite.copied": "Copied",
 
