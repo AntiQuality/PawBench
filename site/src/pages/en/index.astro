@@ -2,7 +2,6 @@
 import Base from '@/layouts/Base.astro';
 import Hero from '@/components/astro/Hero.astro';
 import HowItWorks from '@/components/astro/HowItWorks.astro';
-import Citation from '@/components/astro/Citation.astro';
 import MatrixTabs from '@/components/react/MatrixTabs.tsx';
 import LeaderboardTable from '@/components/react/LeaderboardTable.tsx';
 import leaderboardJson from '@/data/leaderboard.json';
@@ -85,6 +84,5 @@ const tableLabels = {
     </div>
 
     <HowItWorks locale={locale} />
-    <Citation locale={locale} />
   </section>
 </Base>
