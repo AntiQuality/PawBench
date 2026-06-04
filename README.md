@@ -1,8 +1,4 @@
-<p align="center">
-  <img src="site/public/favicon.svg" width="110" alt="PawBench logo">
-</p>
-
-<h1 align="center">PawBench</h1>
+<h1 align="center">🐾 PawBench</h1>
 
 <p align="center">
   <a href="README.md"><strong>English</strong></a> ·
@@ -10,20 +6,26 @@
 </p>
 
 <p align="center">
-  <img alt="tasks" src="https://img.shields.io/badge/tasks-150-2ea44f">
-  <img alt="models" src="https://img.shields.io/badge/models-9-0969da">
-  <img alt="harnesses" src="https://img.shields.io/badge/harnesses-3-8250df">
+  <a href="#tasks">
+    <img alt="tasks" src="https://img.shields.io/badge/tasks-150-2ea44f">
+  </a>
+  <a href="https://agentscope-ai.github.io/PawBench/">
+    <img alt="models" src="https://img.shields.io/badge/models-9-0969da">
+  </a>
+  <a href="#harnesses">
+    <img alt="harnesses" src="https://img.shields.io/badge/harnesses-3-8250df">
+  </a>
   <a href="https://agentscope-ai.github.io/PawBench/">
     <img alt="leaderboard" src="https://img.shields.io/badge/leaderboard-live-cf222e">
   </a>
-  <a href="https://github.com/agentscope-ai/pawbench">
+  <a href="https://github.com/agentscope-ai/PawBench">
     <img alt="GitHub repo" src="https://img.shields.io/badge/GitHub-pawbench-24292f">
   </a>
 </p>
 
 <p align="center">
-  <strong>A benchmark for evaluating foundation models and the harnesses that run them.</strong><br>
-  150 agent tasks · 4,050 model-harness-task cells · score slices, transcripts, grader artifacts, and replayable runs.
+  <strong>A benchmark for evaluating LLM × harness performance.</strong><br>
+  150 agent tasks | 4,050 model-harness-task cells | score slices, transcripts, grader artifacts, and replayable runs.
 </p>
 
 ## Overview
@@ -32,11 +34,11 @@ The same model can behave very differently in different agent runtimes. When a t
 
 PawBench evaluates the model and the harness together:
 
-$$\text{Agent Performance} = f(\text{Foundation Model}, \text{Harness})$$
+$$\text{Agent Performance} = f(\text{LLM}, \text{Harness})$$
 
 v1.0 covers **9 models × 3 harnesses × 150 tasks**. The first run shows a **5.6-point** average gap between the strongest and weakest harnesses, comparable to some model upgrades. On `qwen3.6-35b-a3b`, switching only the harness moves the score by **11.5 points**.
 
-![PawBench leaderboard overview](site/public/pawbench-leaderboard-overview.png)
+![PawBench leaderboard overview](site/public/pawbench-leaderboard-overview.svg)
 
 ## Quick Start
 
@@ -117,14 +119,14 @@ PawBench follows a **Reuse & Tag** methodology. Instead of writing every task fr
 | Modality | `modality` | `text` or `multimodal` (`image`, `audio`, `video`) |
 | Environment | `environment` | `closed` (offline, reproducible) or `open` (live internet / SaaS APIs) |
 
-v1.0 contains **150 tasks** from `claweval`, `qwenclawbench`, `pinchbench`, `qwenpawbench`, `skillsbench`, and `wildclawbench`.
+v1.0 contains **150 tasks** from `claweval`, `qwenclawbench`, `pinchbench`, PawBench self-built tasks, `skillsbench`, and `wildclawbench`.
 
 | Source | # | Main coverage |
 | :--- | ---: | :--- |
 | [`claweval`](https://github.com/claw-eval/claw-eval) | 52 | Office productivity, data analytics, content creation |
 | [`qwenclawbench`](https://github.com/SKYLENAGE-AI/QwenClawBench) | 29 | Automation, software engineering, safety alignment |
-| `pinchbench` | 23 | Office workflows, software engineering, information retrieval |
-| `qwenpawbench` | 21 | Automation, information retrieval, safety alignment |
+| [`pinchbench`](https://github.com/pinchbench/skill) | 23 | Office workflows, software engineering, information retrieval |
+| PawBench | 21 | Self-built tasks covering automation, information retrieval, and safety alignment |
 | [`skillsbench`](https://github.com/benchflow-ai/skillsbench) | 15 | Long-horizon skills, domain automation |
 | [`wildclawbench`](https://github.com/InternLM/WildClawBench) | 10 | Office workflows, safety alignment |
 

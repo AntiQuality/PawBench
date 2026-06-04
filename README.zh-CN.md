@@ -1,8 +1,4 @@
-<p align="center">
-  <img src="site/public/favicon.svg" width="110" alt="PawBench logo">
-</p>
-
-<h1 align="center">PawBench</h1>
+<h1 align="center">🐾 PawBench</h1>
 
 <p align="center">
   <a href="README.md">English</a> ·
@@ -10,20 +6,26 @@
 </p>
 
 <p align="center">
-  <img alt="tasks" src="https://img.shields.io/badge/tasks-150-2ea44f">
-  <img alt="models" src="https://img.shields.io/badge/models-9-0969da">
-  <img alt="harnesses" src="https://img.shields.io/badge/harnesses-3-8250df">
+  <a href="#任务构建">
+    <img alt="tasks" src="https://img.shields.io/badge/tasks-150-2ea44f">
+  </a>
+  <a href="https://agentscope-ai.github.io/PawBench/">
+    <img alt="models" src="https://img.shields.io/badge/models-9-0969da">
+  </a>
+  <a href="#harness">
+    <img alt="harnesses" src="https://img.shields.io/badge/harnesses-3-8250df">
+  </a>
   <a href="https://agentscope-ai.github.io/PawBench/">
     <img alt="leaderboard" src="https://img.shields.io/badge/leaderboard-live-cf222e">
   </a>
-  <a href="https://github.com/agentscope-ai/pawbench">
+  <a href="https://github.com/agentscope-ai/PawBench">
     <img alt="GitHub repo" src="https://img.shields.io/badge/GitHub-pawbench-24292f">
   </a>
 </p>
 
 <p align="center">
-  <strong>面向通用智能体的评测基准，用来评估基座模型和 Harness 的联合效果。</strong><br>
-  150 道 Agent 任务 · 4,050 个 model-harness-task cell · 支持分数切片、执行轨迹、grader 产物和可复盘运行。
+  <strong>面向通用智能体的评测基准，用来评估 LLM 和 Harness 的联合效果。</strong><br>
+  150 道 Agent 任务 | 4,050 个 model-harness-task cell | 支持分数切片、执行轨迹、grader 产物和可复盘运行。
 </p>
 
 ## Overview
@@ -32,11 +34,11 @@
 
 PawBench 同时评估模型和承载模型运行的 Harness：
 
-$$\text{Agent 表现} = f(\text{基座模型}, \text{Harness})$$
+$$\text{Agent 表现} = f(\text{LLM}, \text{Harness})$$
 
 v1.0 覆盖 **9 个模型 × 3 个 Harness × 150 道任务**。第一批结果显示，三家 Harness 的平均分最高和最低相差 **5.6 分**，已经接近一些模型版本升级带来的收益。以 `qwen3.6-35b-a3b` 为例，只切换 Harness，分数差距达到 **11.5 分**。
 
-![PawBench 榜单概览](site/public/pawbench-leaderboard-overview.png)
+![PawBench 榜单概览](site/public/pawbench-leaderboard-overview.svg)
 
 ## 快速开始
 
@@ -117,14 +119,14 @@ PawBench 采用 **Reuse & Tag** 方法。它不是从零手写所有任务，而
 | 模态 | `modality` | `text` 或 `multimodal`（`image`、`audio`、`video`） |
 | 环境 | `environment` | `closed`（离线、可复现）或 `open`（需要联网或真实 SaaS API） |
 
-v1.0 包含 **150 道任务**，来源包括 `claweval`、`qwenclawbench`、`pinchbench`、`qwenpawbench`、`skillsbench` 和 `wildclawbench`。
+v1.0 包含 **150 道任务**，来源包括 `claweval`、`qwenclawbench`、`pinchbench`、PawBench 自建任务、`skillsbench` 和 `wildclawbench`。
 
 | 来源 | 数量 | 主要覆盖 |
 | :--- | ---: | :--- |
 | [`claweval`](https://github.com/claw-eval/claw-eval) | 52 | 办公协同、数据分析、内容创作 |
 | [`qwenclawbench`](https://github.com/SKYLENAGE-AI/QwenClawBench) | 29 | 自动化、软件工程、安全对齐 |
-| `pinchbench` | 23 | 办公流程、软件工程、信息检索 |
-| `qwenpawbench` | 21 | 自动化、信息检索、安全对齐 |
+| [`pinchbench`](https://github.com/pinchbench/skill) | 23 | 办公流程、软件工程、信息检索 |
+| PawBench | 21 | 自建任务，覆盖自动化、信息检索、安全对齐 |
 | [`skillsbench`](https://github.com/benchflow-ai/skillsbench) | 15 | 长程 Skill、领域自动化 |
 | [`wildclawbench`](https://github.com/InternLM/WildClawBench) | 10 | 办公流程、安全对齐 |
 
