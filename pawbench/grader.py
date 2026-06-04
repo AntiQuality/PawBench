@@ -257,7 +257,30 @@ def _grade_llm_judge(
     ) from last_exc
 
 
+def _is_native_anthropic_url(base_url: str) -> bool:
+    """Return True when *base_url* points to the official Anthropic Messages API."""
+    return "api.anthropic.com" in base_url
+
+
 def _call_llm_judge_api(
+    prompt: str,
+    model: str,
+    base_url: str,
+    api_key: str,
+    timeout_seconds: float = DEFAULT_JUDGE_TIMEOUT_SECONDS,
+) -> str:
+    if _is_native_anthropic_url(base_url):
+        return _call_anthropic_messages_api(
+            prompt=prompt, model=model, base_url=base_url,
+            api_key=api_key, timeout_seconds=timeout_seconds,
+        )
+    return _call_openai_compatible_api(
+        prompt=prompt, model=model, base_url=base_url,
+        api_key=api_key, timeout_seconds=timeout_seconds,
+    )
+
+
+def _call_openai_compatible_api(
     prompt: str,
     model: str,
     base_url: str,
@@ -296,7 +319,7 @@ def _call_llm_judge_api(
     if choices:
         return choices[0].get("message", {}).get("content", "")
 
-    # Anthropic Messages API format: {"content": [{"type": "text", "text": "..."}]}
+    # Anthropic Messages API format (some proxies forward it as-is)
     anthropic_content = body.get("content", [])
     if anthropic_content:
         text_blocks = [b.get("text", "") for b in anthropic_content if b.get("type") == "text"]
@@ -304,6 +327,58 @@ def _call_llm_judge_api(
             return "\n".join(text_blocks)
 
     raise RuntimeError(f"LLM judge API returned unrecognized response format: {body}")
+
+
+def _call_anthropic_messages_api(
+    prompt: str,
+    model: str,
+    base_url: str,
+    api_key: str,
+    timeout_seconds: float = DEFAULT_JUDGE_TIMEOUT_SECONDS,
+) -> str:
+    """Call the native Anthropic Messages API (POST /v1/messages)."""
+    base = base_url.rstrip("/")
+    # Avoid double /v1 if the caller already included it
+    if base.endswith("/v1"):
+        url = base + "/messages"
+    else:
+        url = base + "/v1/messages"
+
+    payload = json.dumps({
+        "model": model,
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.0,
+        "max_tokens": 20480,
+    }).encode("utf-8")
+
+    req = urllib.request.Request(
+        url, data=payload,
+        headers={
+            "Content-Type": "application/json",
+            "x-api-key": api_key,
+            "anthropic-version": "2023-06-01",
+            "User-Agent": "curl/8.14.1",
+        },
+        method="POST",
+    )
+
+    try:
+        with urllib.request.urlopen(req, timeout=timeout_seconds) as resp:
+            body = json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        error_body = exc.read().decode("utf-8", errors="replace") if exc.fp else ""
+        raise RuntimeError(f"LLM judge Anthropic API returned {exc.code}: {error_body}") from exc
+    except urllib.error.URLError as exc:
+        raise RuntimeError(f"LLM judge Anthropic API request failed: {exc}") from exc
+
+    # Anthropic Messages API format: {"content": [{"type": "text", "text": "..."}]}
+    anthropic_content = body.get("content", [])
+    if anthropic_content:
+        text_blocks = [b.get("text", "") for b in anthropic_content if b.get("type") == "text"]
+        if text_blocks:
+            return "\n".join(text_blocks)
+
+    raise RuntimeError(f"LLM judge Anthropic API returned unrecognized response format: {body}")
 
 
 # ── hybrid grading ────────────────────────────────────────────────────────────
