@@ -1,6 +1,6 @@
 # Ubuntu 构建并推送 PawBench 镜像到 ACR
 
-> **背景**：PawBench 评测平台（Agent-Platform）的 Kubernetes 节点是 `linux/amd64`，但 macOS（Apple Silicon）原生 `docker build` 出来的是 `linux/arm64`，集群拉起来会报 `exec /usr/bin/bash: exec format error`。本文档指导你**在 x86_64 Ubuntu 机器上**构建三个 PawBench Agent 镜像（copaw / openclaw / hermes）并推送到阿里云 ACR。
+> **背景**：PawBench 评测平台（Agent-Platform）的 Kubernetes 节点是 `linux/amd64`，但 macOS（Apple Silicon）原生 `docker build` 出来的是 `linux/arm64`，集群拉起来会报 `exec /usr/bin/bash: exec format error`。本文档指导你**在 x86_64 Ubuntu 机器上**构建三个 PawBench Agent 镜像（qwenpaw / openclaw / hermes）并推送到阿里云 ACR。
 >
 > **本文档自包含** —— 不依赖 `examples/` 目录，所有命令都从仓库根 `copawbench/` 执行。
 >
@@ -32,7 +32,7 @@ TAG=$(ssh ${BUILD_SERVER} "
   echo \"\$TAG\" > /tmp/pawbench_build_tag.txt
 
   # 并行构建三个镜像（层缓存命中时约 30 秒）
-  docker build -f docker/Dockerfile.pawbench-copaw    -t pawbench-copaw:\${TAG}    -t pawbench-copaw:test    . > /tmp/build-copaw.log    2>&1 &
+  docker build -f docker/Dockerfile.pawbench-qwenpaw    -t pawbench-qwenpaw:\${TAG}    -t pawbench-qwenpaw:test    . > /tmp/build-qwenpaw.log    2>&1 &
   docker build -f docker/Dockerfile.pawbench-openclaw -t pawbench-openclaw:\${TAG} -t pawbench-openclaw:test . > /tmp/build-openclaw.log 2>&1 &
   docker build -f docker/Dockerfile.pawbench-hermes   -t pawbench-hermes:\${TAG}   -t pawbench-hermes:test   . > /tmp/build-hermes.log   2>&1 &
   wait
@@ -47,7 +47,7 @@ DOCKER_HOST=${COLIMA_SOCK} docker login \
   ${REGISTRY}
 
 # ── 步骤 3：SSH 管道传输 + 推送（顺序执行）────────────────────────────
-for agent in copaw openclaw hermes; do
+for agent in qwenpaw openclaw hermes; do
   echo "=== transferring & pushing pawbench-${agent} ==="
   ssh ${BUILD_SERVER} "docker save pawbench-${agent}:${TAG} | gzip" \
     | DOCKER_HOST=${COLIMA_SOCK} docker load
@@ -63,7 +63,7 @@ done
 echo ""
 echo "=========================================="
 echo "TAG=${TAG}"
-for agent in copaw openclaw hermes; do
+for agent in qwenpaw openclaw hermes; do
   digest=$(DOCKER_HOST=${COLIMA_SOCK} docker inspect \
     ${REGISTRY}/eflops/pawbench-${agent}:${TAG} \
     --format '{{index .RepoDigests 0}}' 2>/dev/null | awk -F'@' '{print $2}')
@@ -97,7 +97,7 @@ docker info | grep -i "Architecture\|Operating System"
 
 # 0.3 仓库根目录正确（仓库是 copawbench）
 cd ~/path/to/copawbench
-ls docker/Dockerfile.pawbench-copaw \
+ls docker/Dockerfile.pawbench-qwenpaw \
    docker/Dockerfile.pawbench-openclaw \
    docker/Dockerfile.pawbench-hermes \
    pawbench/__init__.py \
@@ -156,11 +156,11 @@ echo "REGISTRY=${REGISTRY}"
 ```bash
 cd ~/path/to/copawbench
 
-# (1) copaw —— qwenpaw + xfce4 + chromium + node20，约 12-15 分钟
+# (1) qwenpaw —— qwenpaw + xfce4 + chromium + node20，约 12-15 分钟
 docker build \
-  -f docker/Dockerfile.pawbench-copaw \
-  -t pawbench-copaw:${TAG} \
-  -t pawbench-copaw:test \
+  -f docker/Dockerfile.pawbench-qwenpaw \
+  -t pawbench-qwenpaw:${TAG} \
+  -t pawbench-qwenpaw:test \
   .
 
 # (2) openclaw —— openclaw + xfce4 + chromium，约 10 分钟
@@ -183,7 +183,7 @@ docker build \
 ### 3.2 并行构建（机器内存 ≥ 32 GB 时再用）
 
 ```bash
-docker build -f docker/Dockerfile.pawbench-copaw    -t pawbench-copaw:${TAG}    -t pawbench-copaw:test    . > /tmp/build-copaw.log    2>&1 &
+docker build -f docker/Dockerfile.pawbench-qwenpaw    -t pawbench-qwenpaw:${TAG}    -t pawbench-qwenpaw:test    . > /tmp/build-qwenpaw.log    2>&1 &
 docker build -f docker/Dockerfile.pawbench-openclaw -t pawbench-openclaw:${TAG} -t pawbench-openclaw:test . > /tmp/build-openclaw.log 2>&1 &
 docker build -f docker/Dockerfile.pawbench-hermes   -t pawbench-hermes:${TAG}   -t pawbench-hermes:test   . > /tmp/build-hermes.log   2>&1 &
 wait
@@ -194,11 +194,11 @@ tail -5 /tmp/build-*.log
 ### 3.3 验证三个镜像
 
 ```bash
-docker images | grep -E "pawbench-(copaw|openclaw|hermes)"
+docker images | grep -E "pawbench-(qwenpaw|openclaw|hermes)"
 # 期望六行（三个 镜像 × 两个 tag）
 
 # 验证架构（必须是 amd64！）
-for img in pawbench-copaw pawbench-openclaw pawbench-hermes; do
+for img in pawbench-qwenpaw pawbench-openclaw pawbench-hermes; do
   arch=$(docker inspect ${img}:test --format '{{.Architecture}}/{{.Os}}')
   echo "${img}: ${arch}"
 done
@@ -212,8 +212,8 @@ done
 让镜像内的关键二进制都跑一下 `--version`：
 
 ```bash
-# (1) copaw
-docker run --rm --platform linux/amd64 pawbench-copaw:test \
+# (1) qwenpaw
+docker run --rm --platform linux/amd64 pawbench-qwenpaw:test \
   bash -c 'qwenpaw --version && ossutil --version && python3 -c "import pawbench; print(\"pawbench OK\")"'
 
 # (2) openclaw
@@ -237,7 +237,7 @@ docker run --rm --platform linux/amd64 pawbench-hermes:test \
 
 ```bash
 # 5.1 打 ACR tag
-for agent in copaw openclaw hermes; do
+for agent in qwenpaw openclaw hermes; do
   docker tag pawbench-${agent}:${TAG} ${REGISTRY}/eflops/pawbench-${agent}:${TAG}
 done
 
@@ -246,7 +246,7 @@ docker images | grep "${REGISTRY}/eflops/pawbench"
 # 期望三行 ACR 标签
 
 # 5.2 推送（并行，三个镜像约 5 分钟）
-for agent in copaw openclaw hermes; do
+for agent in qwenpaw openclaw hermes; do
   echo "=== pushing ${agent} ==="
   docker push ${REGISTRY}/eflops/pawbench-${agent}:${TAG} &
 done
@@ -270,7 +270,7 @@ ${TAG}: digest: sha256:xxxxx... size: NNNN
 需要修改的 3 个文件（路径相对 `Agent-Hub` 仓库根）：
 
 ```
-task/pawbench-copaw/config.yaml
+task/pawbench-qwenpaw/config.yaml
 task/pawbench-openclaw/config.yaml
 task/pawbench-hermes/config.yaml
 ```
@@ -278,8 +278,8 @@ task/pawbench-hermes/config.yaml
 每个文件里的 `image:` 字段改为：
 
 ```yaml
-image: "agent-platform-staging-registry-vpc.ap-southeast-1.cr.aliyuncs.com/eflops/pawbench-copaw:${TAG}"
-# openclaw / hermes 同理（替换 -copaw 部分）
+image: "agent-platform-staging-registry-vpc.ap-southeast-1.cr.aliyuncs.com/eflops/pawbench-qwenpaw:${TAG}"
+# openclaw / hermes 同理（替换 -qwenpaw 部分）
 ```
 
 > `image:` 用 VPC endpoint，集群里走内网拉镜像更快；推送是公网。**TAG 必须严格相同**（同一次构建 = 同一个 TAG）。
@@ -302,7 +302,7 @@ git push origin feat/add_pawbench
 
 ```
 TAG=dev-xxxxxxx-YYYYMMDD-HHMM
-copaw    digest: sha256:xxxx
+qwenpaw  digest: sha256:xxxx
 openclaw digest: sha256:xxxx
 hermes   digest: sha256:xxxx
 ```
@@ -355,7 +355,7 @@ RUN pip install --no-cache-dir -i https://mirrors.aliyun.com/pypi/simple/ \
 集群只识别 `linux/amd64`。重新检查：
 
 ```bash
-docker inspect pawbench-copaw:${TAG} --format '{{.Architecture}}/{{.Os}}'
+docker inspect pawbench-qwenpaw:${TAG} --format '{{.Architecture}}/{{.Os}}'
 # 必须是 amd64/linux
 ```
 
@@ -367,7 +367,7 @@ docker inspect pawbench-copaw:${TAG} --format '{{.Architecture}}/{{.Os}}'
 
 * `Agent-Hub` 的 `image:` 字段是否用了 VPC endpoint（`-vpc.` 子域）
 * TAG 是否与 ACR 上推送的 TAG **完全一致**（包含小写、连字符）
-* ACR 控制台 → 镜像仓库 → 找到 `eflops/pawbench-copaw` → 看 tags 列表里有没有你推送的 TAG
+* ACR 控制台 → 镜像仓库 → 找到 `eflops/pawbench-qwenpaw` → 看 tags 列表里有没有你推送的 TAG
 
 ---
 
@@ -399,12 +399,12 @@ docker login \
 
 # 3. 构建
 declare -A DOCKERFILES=(
-  [copaw]="docker/Dockerfile.pawbench-copaw"
+  [qwenpaw]="docker/Dockerfile.pawbench-qwenpaw"
   [openclaw]="docker/Dockerfile.pawbench-openclaw"
   [hermes]="docker/Dockerfile.pawbench-hermes"
 )
 
-for agent in copaw openclaw hermes; do
+for agent in qwenpaw openclaw hermes; do
   echo "=== Building ${agent} ==="
   docker build \
     -f "${DOCKERFILES[$agent]}" \
@@ -414,14 +414,14 @@ for agent in copaw openclaw hermes; do
 done
 
 # 4. 验证架构
-for agent in copaw openclaw hermes; do
+for agent in qwenpaw openclaw hermes; do
   arch=$(docker inspect "pawbench-${agent}:test" --format '{{.Architecture}}/{{.Os}}')
   echo "pawbench-${agent}: ${arch}"
   [ "$arch" = "amd64/linux" ] || { echo "ERROR: ${agent} is not amd64"; exit 1; }
 done
 
 # 5. 推送
-for agent in copaw openclaw hermes; do
+for agent in qwenpaw openclaw hermes; do
   docker tag "pawbench-${agent}:${TAG}" "${REGISTRY}/eflops/pawbench-${agent}:${TAG}"
   echo "=== Pushing ${agent} ==="
   docker push "${REGISTRY}/eflops/pawbench-${agent}:${TAG}"
@@ -433,7 +433,7 @@ echo "=========================================="
 echo "  Build & push DONE"
 echo "=========================================="
 echo "TAG=${TAG}"
-for agent in copaw openclaw hermes; do
+for agent in qwenpaw openclaw hermes; do
   digest=$(docker inspect "${REGISTRY}/eflops/pawbench-${agent}:${TAG}" \
     --format '{{index .RepoDigests 0}}' 2>/dev/null \
     | awk -F'@' '{print $2}')

@@ -26,7 +26,7 @@ cp .env.example .env   # 填入 OPENAI_API_KEY / OPENAI_BASE_URL / JUDGE_API_KEY
 ### 运行评测
 
 ```bash
-# 默认：用 `copaw` 脚手架跑全部任务
+# 默认：用 `qwenpaw` 脚手架跑全部任务
 python run_bench.py --model openai/gpt-4o
 
 # 切换 Harness
@@ -34,7 +34,7 @@ python run_bench.py --agents openclaw --model dashscope/qwen3.6-plus
 python run_bench.py --agents hermes   --model dashscope/qwen3.6-plus
 
 # 在指定任务集上横向对比多个 Harness
-python run_bench.py --agents copaw openclaw hermes \
+python run_bench.py --agents qwenpaw openclaw hermes \
                     --model dashscope/qwen3.6-plus \
                     --tasks T002_email_triage T006_email_reply_draft
 

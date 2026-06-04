@@ -16,7 +16,7 @@ Expected directory layout
       assets/
         ...
 
-Run with copaw agent (default)::
+Run with qwenpaw agent (default)::
 
     python run_bench.py --model openai/gpt-4o
 
@@ -31,13 +31,13 @@ Run a specific dataset::
 agent_config keys
 -----------------
 model              str   (required) Model identifier
-agent_type         str   ``"copaw"`` (default) or ``"openclaw"``
+agent_type         str   ``"qwenpaw"`` (default) or ``"openclaw"``
 dataset            str   Dataset name under ``data/`` (default: claw-eval-converted)
 docker_image       str   Docker image override
 timeout_multiplier float  Scale task timeouts (default: 1.0)
 thinking_level     str   [openclaw] Thinking level (low/medium/high/xhigh)
-api_key            str   [copaw] API key forwarded to the agent
-base_url           str   [copaw] OpenAI-compatible base URL
+api_key            str   [qwenpaw] API key forwarded to the agent
+base_url           str   [qwenpaw] OpenAI-compatible base URL
 judge_model        str   Model used for LLM-judge grading
 verbose            bool  Verbose logging (default: False)
 """
@@ -134,9 +134,9 @@ class PawBenchBackend(BenchmarkBackend):
 
     Supported agent types (``--agents`` / ``agent_config["agent_type"]``):
 
-    * ``"copaw"`` (default) — QwenPaw HTTP-API agent.
-      Default image: ``qwenclawbench-copaw:latest``
-      (docker/Dockerfile.qwenclawbench-copaw)
+    * ``"qwenpaw"`` (default) — QwenPaw HTTP-API agent.
+      Default image: ``qwenclawbench-qwenpaw:latest``
+      (docker/Dockerfile.pawbench-qwenpaw)
 
     * ``"openclaw"`` — OpenClaw CLI agent (``openclaw agent --message``).
       Default image: ``openclaw-pawbench:latest``
@@ -233,7 +233,7 @@ class PawBenchBackend(BenchmarkBackend):
     ) -> TaskResult:
         """Generic async runner: stage files → setup → run → collect → grade.
 
-        Works for all agent types (copaw / openclaw / hermes).  Agent-specific
+        Works for all agent types (qwenpaw / openclaw / hermes).  Agent-specific
         behaviour (workspace symlinks, session conversion, transcript building)
         is delegated to the agent class via ``setup()``, ``post_run_collect()``
         and ``extract_transcript()``.
@@ -247,7 +247,7 @@ class PawBenchBackend(BenchmarkBackend):
         verbose = bool(agent_config.get("verbose", False))
         docker_image = (
             agent_config.get("docker_image")
-            or AgentFactory.default_image_for_type(agent_config.get("agent_type", "copaw"))
+            or AgentFactory.default_image_for_type(agent_config.get("agent_type", "qwenpaw"))
         )
 
         assets_dir = self.benchmark_path / "data" / dataset / "assets"
@@ -665,7 +665,7 @@ def _collect_log_text(workspace: Path | None, max_bytes: int = 512_000) -> str:
     silently masked at the transcript level.
 
     Log file candidates (in priority order):
-    * ``logs/qwenpaw_server.log``   — copaw / qwenpaw agent
+    * ``logs/qwenpaw_server.log``   — qwenpaw agent
     * ``openclaw_gateway.log``      — openclaw agent
     * ``logs/main.log``             — hermes agent
 

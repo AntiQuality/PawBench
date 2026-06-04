@@ -12,7 +12,7 @@ import os
 from typing import TYPE_CHECKING, Any
 
 from pawbench.agents.constants import (
-    COPAW_DEFAULT_IMAGE,
+    QWENPAW_DEFAULT_IMAGE,
     HERMES_DEFAULT_IMAGE,
     OPENCLAW_DEFAULT_IMAGE,
 )
@@ -39,7 +39,7 @@ class AgentFactory:
         from pawbench.agents.impl.openclaw_agent import OpenClawAgent
         from pawbench.agents.impl.hermes_agent import HermesAgent
         cls._REGISTRY = {
-            "copaw":    (QwenPawAgent,   COPAW_DEFAULT_IMAGE),
+            "qwenpaw":  (QwenPawAgent,   QWENPAW_DEFAULT_IMAGE),
             "openclaw": (OpenClawAgent,  OPENCLAW_DEFAULT_IMAGE),
             "hermes":   (HermesAgent,    HERMES_DEFAULT_IMAGE),
         }
@@ -48,7 +48,7 @@ class AgentFactory:
     def create(cls, agent_config: dict[str, Any]) -> Any:
         """Instantiate the agent class for *agent_config['agent_type']*."""
         cls._populate()
-        agent_type = agent_config.get("agent_type", "copaw")
+        agent_type = agent_config.get("agent_type", "qwenpaw")
         entry = cls._REGISTRY.get(agent_type)
         if entry is None:
             raise ValueError(
@@ -71,6 +71,6 @@ class AgentFactory:
         cls._populate()
         entry = cls._REGISTRY.get(agent_type)
         if entry is None:
-            return COPAW_DEFAULT_IMAGE
+            return QWENPAW_DEFAULT_IMAGE
         _, image = entry
         return image

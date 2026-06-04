@@ -1015,7 +1015,7 @@ class OpenClawAgent(ContainerAgent):
 
         This override appends a synthetic final assistant message containing the
         content of every text/Markdown file that was created *during* the run
-        (identified by mtime >= self._run_start_time).  copaw and hermes are
+        (identified by mtime >= self._run_start_time).  qwenpaw and hermes are
         unaffected because they do not use this class.
         """
         transcript = super().extract_transcript(local_workspace, stdout)

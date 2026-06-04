@@ -143,7 +143,7 @@ def _events_from_session_dir(sessions_dir: Path) -> "list[dict[str, Any]]":
        openclaw CLI.  The last ``model.completed`` event contains a
        ``messagesSnapshot`` with the full multi-turn conversation.
     2. **qwenpaw native** — ``agent.memory.content`` typed-block format.
-       Used by copaw (native), openclaw (converted during ``run()``), and
+       Used by qwenpaw (native), openclaw (converted during ``run()``), and
        hermes (synthesised by ``_write_synthetic_session``).
     3. **CoPaw-Pro CLI** — ``agent._model_trajectory[*].{messages, response}``
        carries OpenAI-Chat-style messages.  Fallback for CLI-mode runs.

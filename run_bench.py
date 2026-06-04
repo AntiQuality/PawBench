@@ -6,7 +6,7 @@ pawbench runner  ·  unified entry point for running pawbench tasks
 Quick start
 -----------
 
-  # Run all tasks with the copaw agent (default):
+  # Run all tasks with the qwenpaw agent (default):
   python run_bench.py --model openai/gpt-4o
 
   # Run with OpenClaw agent (copawbench-openclaw:latest):
@@ -16,7 +16,7 @@ Quick start
   python run_bench.py --agents hermes --model dashscope/qwen3.6-plus
 
   # Compare all three agents on the same tasks:
-  python run_bench.py --agents copaw openclaw hermes --model dashscope/qwen3.6-plus --tasks T002_email_triage
+  python run_bench.py --agents qwenpaw openclaw hermes --model dashscope/qwen3.6-plus --tasks T002_email_triage
 
   # Run only the wildclaw-converted dataset:
   python run_bench.py --dataset wildclaw-converted --model openai/gpt-4o
@@ -107,11 +107,11 @@ def parse_args() -> argparse.Namespace:
     run_grp.add_argument(
         "--agents",
         nargs="+",
-        choices=["copaw", "openclaw", "hermes"],
+        choices=["qwenpaw", "openclaw", "hermes"],
         default=None,
         help=(
             "Agent(s) to use. Can be specified multiple times to run all agents sequentially. "
-            "'copaw' (default, qwenclawbench-copaw:latest), "
+            "'qwenpaw' (default, qwenclawbench-qwenpaw:latest), "
             "'openclaw' (openclaw-pawbench:latest), "
             "'hermes' (hermes-qwenclawbench:latest)."
         ),
@@ -162,7 +162,7 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help=(
             "Docker image override. "
-            "copaw mode default: qwenclawbench-copaw:latest (pre-built with qwenpaw); "
+            "qwenpaw mode default: qwenclawbench-qwenpaw:latest (pre-built with qwenpaw); "
             "openclaw mode default: ghcr.io/openclaw/openclaw:main."
         ),
     )
@@ -417,7 +417,7 @@ async def main() -> int:
         return 1
 
     base_results_dir = Path(args.results_dir)
-    agents = args.agents or ["copaw"]
+    agents = args.agents or ["qwenpaw"]
 
     run_ts = _run_timestamp()
 
@@ -460,7 +460,7 @@ async def _run_benchmark(
     api_key: str | None,
     base_url: str,
     benchmark_path: Path,
-    agent_label: str = "copaw",
+    agent_label: str = "qwenpaw",
 ) -> int:
     print(f"Benchmark : {_BENCHMARK_NAME}")
     print(f"Path      : {benchmark_path}")
