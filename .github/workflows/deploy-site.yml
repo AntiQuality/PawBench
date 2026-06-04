@@ -53,14 +53,14 @@ jobs:
       - name: Install Node deps
         working-directory: site
         env:
-          # Headroom for native module postinstall (sharp etc.) on the 7 GB runner.
           NODE_OPTIONS: --max-old-space-size=4096
         run: |
-          # --ignore-scripts skips package postinstalls (sharp binary download,
-          # esbuild self-check, etc.) where the hang happens. We then rebuild
-          # only the native deps we actually need, which is fast and predictable.
-          npm ci --no-audit --no-fund --ignore-scripts
-          npm rebuild esbuild
+          # npm 10.x (bundled with Node 22) hangs and crashes with
+          # "Exit handler never called!" mid-install — a known scheduler bug
+          # that's fixed in npm 11.x. Upgrade before running `npm ci`.
+          npm install -g npm@latest
+          npm --version
+          npm ci --no-audit --no-fund
           echo "--- node_modules/.bin/astro check ---"
           ls -la node_modules/.bin/astro
           node_modules/.bin/astro --version
