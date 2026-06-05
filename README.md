@@ -43,7 +43,7 @@ PawBench evaluates the model and the harness together:
 $$\text{Agent Performance} = f(\text{LLM}, \text{Harness})$$
 
 > [!NOTE]
-> PawBench is part of the [OpenJudge](https://github.com/agentscope-ai/OpenJudge) ecosystem, built by the OpenJudge team. It shares OpenJudge's evaluation philosophy — define graders, run at scale, analyze weaknesses, iterate — and applies it to the specific question of how a model behaves across different agent harnesses.
+> PawBench is part of the [OpenJudge](https://github.com/agentscope-ai/OpenJudge) ecosystem. It shares OpenJudge's philosophy of evaluation-driven optimization, but focuses specifically on the interaction between LLMs and agent harnesses.
 
 v1.0 covers **9 models × 3 harnesses × 150 tasks**. Our initial evaluation highlights a key finding:
 
@@ -198,4 +198,4 @@ If you use PawBench in your research or project, please cite it as:
 
 ## Acknowledgments
 
-PawBench is part of the [OpenJudge](https://github.com/agentscope-ai/OpenJudge) ecosystem, built by the OpenJudge team, and stands on top of the open-source agent evaluation community, including [Claw-Eval](https://github.com/claw-eval/claw-eval), [QwenClawBench](https://github.com/SKYLENAGE-AI/QwenClawBench), [WildClawBench](https://github.com/InternLM/WildClawBench), [PinchBench](https://github.com/pinchbench/skill), [skillsbench](https://github.com/benchflow-ai/skillsbench), and others.
+PawBench is built on top of the open-source agent evaluation community, including [Claw-Eval](https://github.com/claw-eval/claw-eval), [QwenClawBench](https://github.com/SKYLENAGE-AI/QwenClawBench), [WildClawBench](https://github.com/InternLM/WildClawBench), [PinchBench](https://github.com/pinchbench/skill), [skillsbench](https://github.com/benchflow-ai/skillsbench), and others.

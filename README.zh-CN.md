@@ -43,7 +43,7 @@ PawBench 同时评估模型和承载模型运行的 Harness：
 $$\text{Agent 表现} = f(\text{LLM}, \text{Harness})$$
 
 > [!NOTE]
-> PawBench 是 [OpenJudge](https://github.com/agentscope-ai/OpenJudge) 生态的一部分，由 OpenJudge 团队打造。它沿用 OpenJudge 的评测理念——定义 grader、大规模评测、分析弱点、快速迭代——并将其落地到「同一个模型在不同 Agent Harness 下表现如何」这一具体问题上。
+> PawBench 是 [OpenJudge](https://github.com/agentscope-ai/OpenJudge) 生态的一部分。它沿用了 OpenJudge“评测驱动优化”的核心理念，并专注于评估 LLM × Harness 这一垂直维度的联合效果。
 
 v1.0 覆盖 **9 个模型 × 3 个 Harness × 150 道任务**。首期评测展示了一个关键发现：
 
@@ -198,4 +198,4 @@ v1.0 包含 **150 道任务**，来源包括 `claweval`、`qwenclawbench`、`pin
 
 ## 致谢
 
-PawBench 是 [OpenJudge](https://github.com/agentscope-ai/OpenJudge) 生态的一部分，由 OpenJudge 团队打造，同时站在开源 Agent 评测社区的肩膀上，包括 [Claw-Eval](https://github.com/claw-eval/claw-eval)、[QwenClawBench](https://github.com/SKYLENAGE-AI/QwenClawBench)、[WildClawBench](https://github.com/InternLM/WildClawBench)、[PinchBench](https://github.com/pinchbench/skill)、[skillsbench](https://github.com/benchflow-ai/skillsbench) 等。
+PawBench 站在开源 Agent 评测社区的肩膀上，包括 [Claw-Eval](https://github.com/claw-eval/claw-eval)、[QwenClawBench](https://github.com/SKYLENAGE-AI/QwenClawBench)、[WildClawBench](https://github.com/InternLM/WildClawBench)、[PinchBench](https://github.com/pinchbench/skill)、[skillsbench](https://github.com/benchflow-ai/skillsbench) 等。
