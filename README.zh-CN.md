@@ -42,7 +42,8 @@ PawBench 同时评估模型和承载模型运行的 Harness：
 
 $$\text{Agent 表现} = f(\text{LLM}, \text{Harness})$$
 
-PawBench 是 [OpenJudge](https://github.com/agentscope-ai/OpenJudge) 生态的一部分，由 OpenJudge 团队打造。它沿用 OpenJudge 的评测理念——定义 grader、大规模评测、分析弱点、快速迭代——并将其落地到「同一个模型在不同 Agent Harness 下表现如何」这一具体问题上。
+> [!NOTE]
+> PawBench 是 [OpenJudge](https://github.com/agentscope-ai/OpenJudge) 生态的一部分，由 OpenJudge 团队打造。它沿用 OpenJudge 的评测理念——定义 grader、大规模评测、分析弱点、快速迭代——并将其落地到「同一个模型在不同 Agent Harness 下表现如何」这一具体问题上。
 
 v1.0 覆盖 **9 个模型 × 3 个 Harness × 150 道任务**。首期评测展示了一个关键发现：
 

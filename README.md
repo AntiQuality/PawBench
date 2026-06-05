@@ -42,7 +42,8 @@ PawBench evaluates the model and the harness together:
 
 $$\text{Agent Performance} = f(\text{LLM}, \text{Harness})$$
 
-PawBench is part of the [OpenJudge](https://github.com/agentscope-ai/OpenJudge) ecosystem, built by the OpenJudge team. It shares OpenJudge's evaluation philosophy — define graders, run at scale, analyze weaknesses, iterate — and applies it to the specific question of how a model behaves across different agent harnesses.
+> [!NOTE]
+> PawBench is part of the [OpenJudge](https://github.com/agentscope-ai/OpenJudge) ecosystem, built by the OpenJudge team. It shares OpenJudge's evaluation philosophy — define graders, run at scale, analyze weaknesses, iterate — and applies it to the specific question of how a model behaves across different agent harnesses.
 
 v1.0 covers **9 models × 3 harnesses × 150 tasks**. Our initial evaluation highlights a key finding:
 
