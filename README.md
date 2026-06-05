@@ -60,7 +60,7 @@ With PawBench, you can:
 - **Iterate:** Inspect traces and rerun slices after a fix to check whether the targeted score actually moves.
 
 > **💡 Optimize Your Evaluation Logic with OpenJudge**
-> While PawBench is a specialized benchmark for LLM × Harness performance, you can build and optimize your own custom evaluation pipelines using **[OpenJudge](https://github.com/agentscope-ai/OpenJudge)**. OpenJudge provides 50+ production-ready graders (such as relevance, tool selection, and trajectory quality) to help you evaluate and fine-tune your custom agents.
+> To build your own evaluation system beyond the LLM × Harness vertical, you can leverage **[OpenJudge](https://github.com/agentscope-ai/OpenJudge)**'s 50+ production-ready graders (relevance, tool selection, trajectory, etc.) to evaluate and optimize your custom agents.
 
 ## Quick Start
 
