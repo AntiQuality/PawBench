@@ -18,14 +18,11 @@
   <a href="https://agentscope-ai.github.io/PawBench/">
     <img alt="leaderboard" src="https://img.shields.io/badge/leaderboard-live-cf222e">
   </a>
-  <a href="https://github.com/agentscope-ai/PawBench">
-    <img alt="GitHub repo" src="https://img.shields.io/badge/GitHub-pawbench-24292f">
+  <a href="https://github.com/agentscope-ai/OpenJudge">
+    <img alt="OpenJudge Ecosystem" src="https://img.shields.io/badge/ecosystem-OpenJudge-blue?logo=github&color=0969da">
   </a>
   <a href="LICENSE">
     <img alt="license" src="https://img.shields.io/badge/license-Apache%202.0-blue">
-  </a>
-  <a href="https://github.com/agentscope-ai/OpenJudge">
-    <img alt="OpenJudge Ecosystem" src="https://img.shields.io/badge/ecosystem-OpenJudge-blue?logo=github&color=0969da">
   </a>
 </p>
 
