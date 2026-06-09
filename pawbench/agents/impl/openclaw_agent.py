@@ -165,13 +165,13 @@ class OpenClawAgent(ContainerAgent):
         openclaw_model = self._openclaw_model_id(model_identifier)
         env_prefix = self._make_key_env(provider_str, api_key)
         # NOTE: The first openclaw CLI invocation in a fresh container installs
-        # all plugin runtime dependencies (~26 s).  Timeouts here must exceed
-        # that warm-up cost; subsequent invocations reuse the cached deps and
-        # complete in < 1 s.
+        # all plugin runtime dependencies (can take 60-120 s on slow networks).
+        # Timeouts here must exceed that warm-up cost; subsequent invocations
+        # reuse the cached deps and complete in < 1 s.
         await environment.execute_command(
             f"{env_prefix}"
             f"openclaw agents delete {shlex.quote(agent_id)} --force 2>/dev/null || true",
-            timeout=90,
+            timeout=300,
         )
         add_result = await environment.execute_command(
             f"{env_prefix}"
@@ -179,7 +179,7 @@ class OpenClawAgent(ContainerAgent):
             f"--model {shlex.quote(openclaw_model)} "
             f"--workspace {shlex.quote(AGENT_WORKSPACE)} "
             "--non-interactive",
-            timeout=120,
+            timeout=300,
         )
         if add_result.get("returncode", 1) != 0:
             import logging
