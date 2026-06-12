@@ -30,6 +30,17 @@ class AgentFactory:
 
     # Populated lazily to avoid import-time circular dependencies.
     _REGISTRY: "dict[str, tuple[type, str]]" = {}
+    _AGENT_RUNTIME_CONFIG_KEYS = (
+        "generate_kwargs",
+        "max_tokens",
+        "max_turns",
+        "qwenpaw_version",
+        "skip_bootstrap",
+        "task_timeout_s",
+        "thinking",
+        "thinking_level",
+        "vision_model",
+    )
 
     @classmethod
     def _populate(cls) -> None:
@@ -56,14 +67,18 @@ class AgentFactory:
                 f"Known types: {list(cls._REGISTRY)}"
             )
         AgentCls, _ = entry
-        return AgentCls(
-            model=agent_config["model"],
-            api_key=agent_config.get("api_key") or os.environ.get("OPENAI_API_KEY", ""),
-            base_url=agent_config.get("base_url") or os.environ.get(
+        kwargs = {
+            "model": agent_config["model"],
+            "api_key": agent_config.get("api_key") or os.environ.get("OPENAI_API_KEY", ""),
+            "base_url": agent_config.get("base_url") or os.environ.get(
                 "OPENAI_BASE_URL", "https://api.openai.com/v1"
             ),
-            api_model_name=agent_config.get("api_model_name"),
-        )
+            "api_model_name": agent_config.get("api_model_name"),
+        }
+        for key in cls._AGENT_RUNTIME_CONFIG_KEYS:
+            if key in agent_config:
+                kwargs[key] = agent_config[key]
+        return AgentCls(**kwargs)
 
     @classmethod
     def default_image_for_type(cls, agent_type: str) -> str:
