@@ -173,7 +173,7 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         default=False,
         dest="skip_bootstrap",
-        help="[openclaw] Remove BOOTSTRAP.md / SOUL.md from the task workspace before execution.",
+        help="[QwenPaw] Remove BOOTSTRAP.md from the task workspace before execution.",
     )
 
     model_grp = p.add_argument_group("Model & API configuration")
