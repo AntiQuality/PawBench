@@ -37,6 +37,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import posixpath
 import re
 import shlex
 import shutil
@@ -49,10 +50,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from .utils.anomalies import detect_anomalies
 from .agents.factory import AgentFactory
 from .grader import grade_task
 from .task_loader import TaskLoader
+from .utils.anomalies import detect_anomalies
+
+WORKSPACE_ROOT = "/app/working/workspaces/default"
 
 
 @dataclass
@@ -284,44 +287,20 @@ class PawBenchBackend(BenchmarkBackend):
             # files from the base image (for example BOOTSTRAP.md). Residual
             # files can hijack prompt handling and cause short/off-topic runs.
             await env.execute_command(
-                "mkdir -p /app/working/workspaces/default && "
-                "find /app/working/workspaces/default -mindepth 1 -maxdepth 1 -exec rm -rf {} +"
+                f"mkdir -p {WORKSPACE_ROOT} && "
+                f"find {WORKSPACE_ROOT} -mindepth 1 -maxdepth 1 -exec rm -rf {{}} +"
             )
             await env.execute_command(
-                "mkdir -p /app/working/workspaces/default/output "
-                "/app/working/workspaces/default/sessions"
+                f"mkdir -p {WORKSPACE_ROOT}/output {WORKSPACE_ROOT}/sessions"
             )
 
-            # Stage task workspace files into the container.
-            for file_spec in getattr(task, "workspace_files", []):
-                if "content" in file_spec:
-                    dest = f"/app/working/workspaces/default/{file_spec['path']}"
-                    await env.write_file(dest, file_spec["content"])
-                elif "source" in file_spec and "dest" in file_spec:
-                    source_rel = file_spec["source"]
-                    # Some task sets (e.g. pawbench) write "source: assets/T-prefix/file"
-                    # while older sets write "source: file" (relative to task assets dir).
-                    # Normalise by stripping a leading "assets/" if present so the
-                    # candidate lookup below always operates on the bare relative path.
-                    source_rel_stripped = re.sub(r"^assets/", "", source_rel)
-                    src: Path | None = None
-                    for candidate in [
-                        assets_dir / task.task_id / source_rel_stripped,
-                        assets_dir / source_rel_stripped,
-                        assets_dir / task.task_id / source_rel,
-                        assets_dir / source_rel,
-                    ]:
-                        if candidate.exists():
-                            src = candidate
-                            break
-                    if src is not None:
-                        container_dest = f"/app/working/workspaces/default/{file_spec['dest']}"
-                        await env.execute_command(
-                            f"mkdir -p {shlex.quote(str(Path(container_dest).parent))}"
-                        )
-                        await env.copy_to(src, container_dest)
-                    elif verbose:
-                        print(f"  [{agent.name}] WARNING: workspace file not found: {source_rel}")
+            await _stage_workspace_files(
+                env=env,
+                task=task,
+                assets_dir=assets_dir,
+                agent_name=agent.name,
+                verbose=verbose,
+            )
 
             await agent.setup(env)
             run_result = await agent.run(task.prompt, env)
@@ -342,7 +321,7 @@ class PawBenchBackend(BenchmarkBackend):
                 # Primary copy: full workspace tree (includes sessions/, output/, etc.)
                 subprocess.run(
                     ["docker", "cp",
-                     f"{container_name}:/app/working/workspaces/default/.",
+                     f"{container_name}:{WORKSPACE_ROOT}/.",
                      str(local_workspace)],
                     capture_output=True, text=True,
                 )
@@ -350,7 +329,7 @@ class PawBenchBackend(BenchmarkBackend):
                 # that look at the workspace root can find them directly.
                 subprocess.run(
                     ["docker", "cp",
-                     f"{container_name}:/app/working/workspaces/default/output/.",
+                     f"{container_name}:{WORKSPACE_ROOT}/output/.",
                      str(local_workspace)],
                     capture_output=True, text=True,
                 )
@@ -606,6 +585,125 @@ def _save_docker_image(container_name: str, task_id: str, save_dir: Path) -> Non
         print(f"  [docker-save] WARNING: unexpected error saving image for {task_id}: {exc}")
     finally:
         subprocess.run(["docker", "rmi", "-f", tmp_tag], capture_output=True)
+
+
+async def _stage_workspace_files(
+    *,
+    env: Any,
+    task: Any,
+    assets_dir: Path,
+    agent_name: str,
+    verbose: bool,
+) -> None:
+    """Stage task-declared workspace files under the benchmark workspace root."""
+
+    for file_spec in getattr(task, "workspace_files", []):
+        if not isinstance(file_spec, dict):
+            continue
+
+        if "content" in file_spec:
+            dest_rel = _safe_workspace_dest(file_spec.get("path"))
+            if dest_rel is None:
+                _warn_workspace_skip(
+                    agent_name,
+                    f"workspace destination rejected: {file_spec.get('path')}",
+                    verbose,
+                )
+                continue
+            await env.write_file(f"{WORKSPACE_ROOT}/{dest_rel}", file_spec["content"])
+            continue
+
+        if "source" not in file_spec or "dest" not in file_spec:
+            continue
+
+        dest_rel = _safe_workspace_dest(file_spec.get("dest"))
+        if dest_rel is None:
+            _warn_workspace_skip(
+                agent_name,
+                f"workspace destination rejected: {file_spec.get('dest')}",
+                verbose,
+            )
+            continue
+
+        source_rel = str(file_spec.get("source") or "")
+        src = _resolve_workspace_source(assets_dir, task, source_rel)
+        if src is None:
+            _warn_workspace_skip(
+                agent_name,
+                f"workspace file not found or rejected: {source_rel}",
+                verbose,
+            )
+            continue
+        if _has_symlink(src):
+            _warn_workspace_skip(
+                agent_name,
+                f"workspace source rejected because it contains symlink: {source_rel}",
+                verbose,
+            )
+            continue
+
+        container_dest = f"{WORKSPACE_ROOT}/{dest_rel}"
+        await env.execute_command(
+            f"mkdir -p {shlex.quote(str(Path(container_dest).parent))}"
+        )
+        await env.copy_to(src, container_dest)
+
+
+def _safe_workspace_dest(raw_dest: Any) -> str | None:
+    raw = str(raw_dest or "").replace("\\", "/").strip()
+    if not raw or Path(raw).is_absolute() or re.match(r"^[A-Za-z]:/", raw):
+        return None
+
+    normalized = posixpath.normpath(raw)
+    if normalized in {"", ".", ".."} or normalized.startswith("../"):
+        return None
+    return normalized
+
+
+def _resolve_workspace_source(assets_dir: Path, task: Any, raw_source: Any) -> Path | None:
+    source_rel = str(raw_source or "").replace("\\", "/").strip()
+    if (
+        not source_rel
+        or Path(source_rel).is_absolute()
+        or re.match(r"^[A-Za-z]:/", source_rel)
+    ):
+        return None
+
+    assets_root = assets_dir.resolve()
+    source_rel_stripped = re.sub(r"^assets/", "", source_rel)
+    candidates = [
+        assets_dir / task.task_id / source_rel_stripped,
+        assets_dir / source_rel_stripped,
+        assets_dir / task.task_id / source_rel,
+        assets_dir / source_rel,
+    ]
+
+    for candidate in candidates:
+        if not candidate.exists():
+            continue
+        try:
+            resolved = candidate.resolve(strict=True)
+            resolved.relative_to(assets_root)
+        except (OSError, ValueError):
+            continue
+        return resolved
+    return None
+
+
+def _has_symlink(path: Path) -> bool:
+    if path.is_symlink():
+        return True
+    if not path.is_dir():
+        return False
+    try:
+        return any(child.is_symlink() for child in path.rglob("*"))
+    except OSError:
+        return True
+
+
+def _warn_workspace_skip(agent_name: str, message: str, verbose: bool) -> None:
+    if verbose:
+        print(f"  [{agent_name}] WARNING: {message}")
 
 
 def _grade_with_credentials(
