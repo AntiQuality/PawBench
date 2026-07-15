@@ -9,7 +9,7 @@ input_modality: text-only
 external_dependency: none
 workspace_files:
 - source: assets/T066_pinchbench_cicd_pipeline_debug/broken_ci.yml
-  dest: broken_ci.yml
+  dest: .github/workflows/ci.yml
 labels:
   complexity: L3
   environment: open
@@ -26,7 +26,7 @@ labels:
 
 ## Prompt
 
-The file `broken_ci.yml` in the workspace is a GitHub Actions workflow that has several bugs preventing it from running correctly. Identify and fix all the issues in this workflow file, saving the corrected version in place.
+The file `.github/workflows/ci.yml` in the workspace is a GitHub Actions workflow that has several bugs preventing it from running correctly. Identify and fix all the issues in this workflow file, saving the corrected version in place.
 
 Known symptoms reported by the team:
 
@@ -39,7 +39,7 @@ Fix all four issues directly in the file. Do not add comments explaining the cha
 
 ## Expected Behavior
 
-The agent should read `broken_ci.yml`, identify the four bugs, and fix them:
+The agent should read `.github/workflows/ci.yml`, identify the four bugs, and fix them:
 
 1. **Typo in runner label**: `ubuntu-latst` should be `ubuntu-latest`.
 2. **Matrix comparison type**: `if: matrix.node-version == 20` should use string comparison `if: matrix.node-version == '20'` (or equivalent) because matrix values may be strings.
@@ -48,7 +48,7 @@ The agent should read `broken_ci.yml`, identify the four bugs, and fix them:
 
 ## Grading Criteria
 
-- [ ] File `broken_ci.yml` exists after edit
+- [ ] File `.github/workflows/ci.yml` exists after edit
 - [ ] File is valid YAML
 - [ ] Runner label `ubuntu-latst` is fixed to `ubuntu-latest`
 - [ ] Coverage upload condition uses string comparison for node version
@@ -72,7 +72,7 @@ def grade(transcript: list, workspace_path: str) -> dict:
     }
 
     workspace = Path(workspace_path)
-    ci_file = workspace / "broken_ci.yml"
+    ci_file = workspace / ".github" / "workflows" / "ci.yml"
     if not ci_file.exists():
         return scores
 
